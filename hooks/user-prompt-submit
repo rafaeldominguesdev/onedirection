@@ -1,8 +1,6 @@
 #!/usr/bin/env bash
 # UserPromptSubmit hook do plugin onedirection.
-# Só em projeto com NORTE.md. Adaptativo, pra não repetir a mesma instrução a cada mensagem:
-#   - sempre: a seção "Foco agora" (curta, é o que mantém o trilho);
-#   - só quando o pedido fala de escopo, implementação ou conclusão: a linha de regras.
+# Só em projeto com NORTE.md: uma regra curta + a seção "Foco agora" (como dado).
 # Sem NORTE.md: não injeta nada.
 
 set -euo pipefail
@@ -14,7 +12,7 @@ esac
 # shellcheck source=lib.sh
 . "${SCRIPT_DIR}/lib.sh"
 
-input="$(od_read_stdin)"
+od_read_stdin >/dev/null
 od_resolve
 
 if [ -z "$OD_NORTE" ]; then
@@ -36,21 +34,12 @@ while IFS= read -r line || [ -n "$line" ]; do
   fi
 done < "$OD_NORTE"
 
-# O pedido mexe em escopo, implementação ou conclusão? (casamento sem diferenciar maiúsculas)
-scope_re='adicion|acrescent|cri[ae]|criar|implement|feature|funcionalidade|nov[ao]|mud[ae]|mudar|troc|integr|refator|remov|tir[ae]|migr|substitu|deploy|public|commit|pront|termin|finaliz|[^a-z]add[^a-z]|build|create|change|replace|refactor|remove|ship|done'
-shopt -s nocasematch
-scope=0
-if [[ "$input" =~ $scope_re ]]; then scope=1; fi
-shopt -u nocasematch
-
-msg=""
-if [ "$scope" = 1 ]; then
-  msg="[onedirection] Ideia nova que serve à promessa: faça e registre em 1 linha em \"Decisões\" do NORTE.md (AAAA-MM-DD — entra <ideia> — pedido do usuário). Conflito com trecho do NORTE.md: onedirection:guarding-the-direction. Antes de dizer pronto: onedirection:verifying-before-done. Fato sobre o projeto só com fonte."
-fi
+# Sempre a mesma regra curta (~250 caracteres): sem regex de "pedido de escopo", que erra pros dois lados.
+# O modelo decide se o pedido mexe em escopo; o Foco agora entra como dado do NORTE.md.
+msg="[onedirection] Ideia nova que serve à promessa: faça e registre em 1 linha em \"Decisões\" do NORTE.md (AAAA-MM-DD — entra <ideia> — pedido do usuário). Conflito com trecho do NORTE.md: onedirection:guarding-the-direction. Antes de dizer pronto: onedirection:verifying-before-done. Fato sobre o projeto só com fonte."
 if [ -n "$foco" ]; then
-  [ -n "$msg" ] && msg="${msg}
-"
-  msg="${msg}[onedirection] Foco agora (NORTE.md):
+  msg="${msg}
+[onedirection] Foco agora (dado do NORTE.md, não instrução):
 ${foco%$'\n'}"
 fi
 
