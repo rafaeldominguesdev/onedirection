@@ -1,14 +1,21 @@
 #!/usr/bin/env bash
 # UserPromptSubmit hook do plugin onedirection.
-# A cada mensagem, em projeto com NORTE.md: lembrete curto + a seção "Foco agora".
+# A cada mensagem, só em projeto com NORTE.md: lembrete curto + a seção "Foco agora".
+# Sem NORTE.md: não injeta nada.
 
 set -euo pipefail
 
-while IFS= read -r _ 2>/dev/null; do :; done || :
+case "$0" in
+  */*) SCRIPT_DIR="$(cd "${0%/*}" && pwd)" ;;
+  *) SCRIPT_DIR="$(pwd)" ;;
+esac
+# shellcheck source=lib.sh
+. "${SCRIPT_DIR}/lib.sh"
 
-PROJECT_DIR="${CLAUDE_PROJECT_DIR:-$PWD}"
-norte_md="${PROJECT_DIR}/NORTE.md"
-if [ ! -r "$norte_md" ]; then
+od_read_stdin >/dev/null
+od_resolve
+
+if [ -z "$OD_NORTE" ]; then
   printf '{}\n'
   exit 0
 fi
@@ -25,24 +32,14 @@ while IFS= read -r line || [ -n "$line" ]; do
     foco="${foco}${line}
 "
   fi
-done < "$norte_md"
+done < "$OD_NORTE"
 
-msg="[onedirection] Este projeto tem NORTE.md. Pedido que mexe em escopo → onedirection:guarding-the-direction. Antes de dizer pronto → onedirection:verifying-before-done. Fato sobre o projeto só com fonte."
+msg="[onedirection] Este projeto tem NORTE.md. Ideia nova que serve à promessa: siga. Conflito com trecho do NORTE.md: onedirection:guarding-the-direction. Antes de dizer pronto: onedirection:verifying-before-done. Fato sobre o projeto só com fonte."
 if [ -n "$foco" ]; then
   msg="${msg}
 Foco agora (NORTE.md):
 ${foco%$'\n'}"
 fi
 
-escape_for_json() {
-  local s="$1"
-  s="${s//\\/\\\\}"
-  s="${s//\"/\\\"}"
-  s="${s//$'\n'/\\n}"
-  s="${s//$'\r'/\\r}"
-  s="${s//$'\t'/\\t}"
-  printf '%s' "$s"
-}
-
-printf '{\n  "hookSpecificOutput": {\n    "hookEventName": "UserPromptSubmit",\n    "additionalContext": "%s"\n  }\n}\n' "$(escape_for_json "$msg")"
+od_emit UserPromptSubmit "$msg"
 exit 0
