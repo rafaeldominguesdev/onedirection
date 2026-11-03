@@ -3,8 +3,7 @@
   "description": "Guardião da ideia original do projeto: captura a visão antes do código, reconstrói a visão de projetos em andamento e não deixa o trabalho fugir dela",
   "version": "0.1.0",
   "author": {
-    "name": "Rafael Domingues",
-    "email": "rafadominguesdev@gmail.com"
+    "name": "Rafael Domingues"
   },
   "license": "MIT",
   "keywords": [
@@ -13,5 +12,7 @@
     "scope",
     "planning",
     "workflows"
-  ]
+  ],
+  "homepage": "https://github.com/rafaeldominguesdev/onedirection",
+  "repository": "https://github.com/rafaeldominguesdev/onedirection"
 }
