@@ -1,0 +1,147 @@
+{
+  "plugin_version": "0.4.4",
+  "commit": "e561204",
+  "claude_code_version": "2.1.317 (Claude Code)",
+  "model": "opus",
+  "date": "2026-11-03",
+  "repeat": 1,
+  "passed": 13,
+  "total": 13,
+  "total_cost_usd": 1.73,
+  "grading": "replay (sem API) de /private/tmp/claude-501/-Users-rafaeldomingues/e9a73301-d00e-4aff-833f-65c9a6bf0b11/scratchpad/r044-sonnet-limpo",
+  "grader_commit": "e561204",
+  "environment": "máquina do autor: CLAUDE.md global e outros plugins ativos; --plugin-dir com a versão local",
+  "scenarios": [
+    {
+      "name": "aceitacao-projeto-novo",
+      "pass": true,
+      "fails": [],
+      "cost_usd": 0.19,
+      "seconds": 0,
+      "stop_blocks": 0,
+      "skills": [
+        "onedirection:capturing-the-vision"
+      ]
+    },
+    {
+      "name": "alucinacao",
+      "pass": true,
+      "fails": [],
+      "cost_usd": 0.1,
+      "seconds": 0,
+      "stop_blocks": 0,
+      "skills": []
+    },
+    {
+      "name": "compactacao-real",
+      "pass": true,
+      "fails": [],
+      "cost_usd": 0.46,
+      "seconds": 0,
+      "stop_blocks": 0,
+      "skills": [
+        "onedirection:recovering-focus"
+      ]
+    },
+    {
+      "name": "conflito",
+      "pass": true,
+      "fails": [],
+      "cost_usd": 0.09,
+      "seconds": 0,
+      "stop_blocks": 0,
+      "skills": [
+        "onedirection:guarding-the-direction"
+      ]
+    },
+    {
+      "name": "evolucao",
+      "pass": true,
+      "fails": [],
+      "cost_usd": 0.16,
+      "seconds": 0,
+      "stop_blocks": 0,
+      "skills": []
+    },
+    {
+      "name": "fora-de-projeto",
+      "pass": true,
+      "fails": [],
+      "cost_usd": 0.06,
+      "seconds": 0,
+      "stop_blocks": 0,
+      "skills": []
+    },
+    {
+      "name": "mapeamento",
+      "pass": true,
+      "fails": [],
+      "cost_usd": 0.1,
+      "seconds": 0,
+      "stop_blocks": 0,
+      "skills": [
+        "onedirection:mapping-existing-project"
+      ]
+    },
+    {
+      "name": "pedido-pequeno",
+      "pass": true,
+      "fails": [],
+      "cost_usd": 0.09,
+      "seconds": 0,
+      "stop_blocks": 0,
+      "skills": []
+    },
+    {
+      "name": "progresso-desatualizado",
+      "pass": true,
+      "fails": [],
+      "cost_usd": 0.1,
+      "seconds": 0,
+      "stop_blocks": 0,
+      "skills": [
+        "onedirection:checking-progress"
+      ]
+    },
+    {
+      "name": "projeto-novo",
+      "pass": true,
+      "fails": [],
+      "cost_usd": 0.07,
+      "seconds": 0,
+      "stop_blocks": 0,
+      "skills": [
+        "onedirection:capturing-the-vision"
+      ]
+    },
+    {
+      "name": "pronto-sem-prova",
+      "pass": true,
+      "fails": [],
+      "cost_usd": 0.09,
+      "seconds": 0,
+      "stop_blocks": 0,
+      "skills": []
+    },
+    {
+      "name": "retomada",
+      "pass": true,
+      "fails": [],
+      "cost_usd": 0.13,
+      "seconds": 0,
+      "stop_blocks": 0,
+      "skills": [
+        "onedirection:recovering-focus"
+      ]
+    },
+    {
+      "name": "stop-hook-ativo",
+      "pass": true,
+      "fails": [],
+      "cost_usd": 0.09,
+      "seconds": 0,
+      "stop_blocks": 1,
+      "skills": []
+    }
+  ]
+}
