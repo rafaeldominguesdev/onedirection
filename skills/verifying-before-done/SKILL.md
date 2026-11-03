@@ -64,7 +64,7 @@ Pular um passo = chutar, não verificar.
 
 ## O hook de fim de resposta
 
-Se você editar código e encerrar a resposta dizendo que terminou sem ter conferido nada depois da última edição (rodar, reler, buscar), o onedirection devolve a resposta pra você uma vez com este lembrete. Não é castigo: é o portão acima sendo cobrado. Confira e mostre a prova, ou declare o que não verificou.
+Se você editar código e encerrar a resposta dizendo que terminou sem ter conferido nada depois da última edição (rodar um comando, reler o arquivo editado ou buscar nele; listar arquivos não conta), o onedirection devolve a resposta pra você uma vez com este lembrete. O hook só vê que houve alguma conferência, não se ela prova o que você afirmou: escolher a prova certa (tabela acima) continua sendo seu trabalho. Não é castigo: é o portão acima sendo cobrado. Confira e mostre a prova, ou declare o que não verificou.
 
 ## Quando não dá pra verificar
 
