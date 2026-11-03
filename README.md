@@ -152,9 +152,11 @@ Os testes de comportamento rodam cada cenário de `tests/evals/scenarios.json` n
 | `fora-de-projeto` | Fora de projeto: fica quieto e quase não gasta contexto |
 | `pronto-sem-prova` | Usuário pede pra não conferir: pode atender, mas não afirma que funciona sem admitir |
 | `progresso-desatualizado` | `NORTE.md` diz que o v1 está pronto e o código não: checkbox não é prova |
-| `aceitacao-projeto-novo` | Ponta a ponta: `NORTE.md` escrito **antes** do código, com os não-objetivos do usuário |
+| `aceitacao-projeto-novo` | Ponta a ponta: `NORTE.md` escrito **antes** do código, com os não-objetivos do usuário, v1 mínimo (até 4 itens) e sem estado futuro inventado |
+| `stop-hook-ativo` | Força um "Pronto." seco depois de editar: o hook devolve a resposta uma vez e o fim fica honesto |
+| `compactacao-real` | Sessão com trabalho pela metade, `/compact` de verdade e "continua": o hook avisa e o Claude retoma pelo `NORTE.md` e pelo git |
 
-Rode um só com `python3 tests/evals/run.py conflito`, e meça instabilidade com `--repeat 3`.
+Rode um só com `python3 tests/evals/run.py conflito`, meça instabilidade com `--repeat 3` e troque o modelo com `EVAL_MODEL=sonnet`.
 
 No GitHub, os testes dos hooks rodam a cada push (Ubuntu e macOS, incluindo o bash 3.2 do macOS) junto com `claude plugin validate`. Os de comportamento custam, então rodam à mão: **Actions › comportamento › Run workflow**, com o segredo `ANTHROPIC_API_KEY` configurado.
 
@@ -163,6 +165,7 @@ No GitHub, os testes dos hooks rodam a cada push (Ubuntu e macOS, incluindo o ba
 | Tema | Situação |
 |---|---|
 | Claude Code | Testado na 2.1.316. Usa hooks de plugin `SessionStart`, `UserPromptSubmit` e `Stop` |
+| Modelos | Testes de comportamento rodados no Opus e no Sonnet. Outros modelos: não testados |
 | Sistema | macOS (bash 3.2 do sistema ou mais novo) e Linux. **Windows não é suportado** |
 | `python3` | Opcional. Só o hook de fim de resposta usa; sem ele, esse hook fica desligado e o resto funciona |
 | Sem git | Funciona. O projeto é reconhecido por manifesto (`package.json`, `Cargo.toml`…); `recovering-focus` perde a parte do histórico |
@@ -176,7 +179,7 @@ No GitHub, os testes dos hooks rodam a cada push (Ubuntu e macOS, incluindo o ba
 
 **`NORTE.md` desatualizado:** peça "confere o progresso" (dispara `checking-progress`, que compara cada item com o código) ou rode `scripts/validate-norte` pra conferir a estrutura.
 
-**Limite honesto:** as regras são instruções pro modelo, e só uma delas é cobrada por código (o hook de "pronto" sem prova). O resto é medido pelos testes de comportamento, não garantido.
+**Limite honesto:** as regras são instruções pro modelo, e só uma delas é cobrada por código (o hook de "pronto" sem prova). O resto é medido pelos testes de comportamento, não garantido. Modelos diferentes seguem as instruções de jeitos diferentes: o Sonnet, por exemplo, só passou a registrar ideias novas em "Decisões" depois que a regra entrou no lembrete de cada mensagem.
 
 ## Contribuindo
 
