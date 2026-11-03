@@ -3,21 +3,29 @@
 
 Bloqueia o fim da resposta UMA vez (stop_hook_active evita laço) quando, no turno atual:
   1. houve edição de arquivo que não é Markdown (Edit/Write/MultiEdit/NotebookEdit);
-  2. nada foi conferido DEPOIS da última edição (Bash, Read, Grep, Glob ou a skill verifying-before-done);
+  2. nada foi conferido DEPOIS da última edição: um comando (Bash), a skill verifying-before-done,
+     ou Read/Grep que olhe o arquivo editado. Glob não conta: listar arquivos não prova nada;
   3. a resposta final afirma conclusão ("pronto", "feito", "corrigido", "done"...)
      sem admitir que não verificou ("não verifiquei", "não testei"...).
 
 Qualquer erro ou formato inesperado = não bloqueia. Este hook nunca pode travar o usuário.
+
+Limite honesto: é uma heurística. Ele não sabe se a verificação provou o que foi afirmado;
+só cobra que ALGUMA conferência tenha acontecido depois da última edição, ou que a resposta
+admita que não conferiu. Markdown e .txt ficam de fora de propósito (documentação não pede teste).
 """
 import json
 import re
 import sys
 
 EDIT_TOOLS = {"Edit", "Write", "MultiEdit", "NotebookEdit"}
-CHECK_TOOLS = {"Bash", "Read", "Grep", "Glob"}
+RUN_TOOLS = {"Bash"}            # comando: sempre conta como conferência
+LOOK_TOOLS = {"Read", "Grep"}   # leitura: só conta se olhar o arquivo editado
+CHECK_TOOLS = RUN_TOOLS | LOOK_TOOLS  # (usado pelo corretor dos testes)
 CLAIM = re.compile(
     r"\b(pront[oa]s?|feit[oa]s?|conclu[ií]d[oa]s?|finalizad[oa]s?|funcionando|corrigid[oa]s?|"
-    r"resolvid[oa]s?|implementad[oa]s?|terminei|tudo certo|done|fixed|completed?|all set|it works)\b",
+    r"resolvid[oa]s?|implementad[oa]s?|terminei|corrigi|resolvi|implementei|consertei|arrumei|"
+    r"(deve|deveria) funcionar|tudo certo|done|fixed|completed?|all set|it works|should (now )?work)\b",
     re.IGNORECASE,
 )
 DISCLOSURE = re.compile(
@@ -40,6 +48,16 @@ def blocks(entry):
     if isinstance(content, str):
         return [{"type": "text", "text": content}]
     return content if isinstance(content, list) else []
+
+
+def looks_at(name, inp, edited):
+    """Read/Grep contam como conferência só se olharem o arquivo editado (ou o projeto inteiro, no Grep)."""
+    if name == "Read":
+        return str(inp.get("file_path") or "") == edited
+    if name == "Grep":
+        where = str(inp.get("path") or "")
+        return not where or edited == where or edited.startswith(where.rstrip("/") + "/")
+    return False
 
 
 def is_user_prompt(entry):
@@ -93,7 +111,8 @@ def main():
                     if not path.lower().endswith((".md", ".markdown", ".txt")):
                         last_edit, last_edit_file, verified_after = pos, path, False
                 elif last_edit is not None and (
-                    name in CHECK_TOOLS
+                    name in RUN_TOOLS
+                    or (name in LOOK_TOOLS and looks_at(name, inp, last_edit_file))
                     or (name == "Skill" and "verifying-before-done" in str(inp.get("skill", "")))
                 ):
                     verified_after = True
