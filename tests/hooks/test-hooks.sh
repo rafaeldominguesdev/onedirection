@@ -32,7 +32,7 @@ COMPACT='{"hook_event_name":"SessionStart","source":"compact"}'
 # --- Fora de projeto: uma linha só
 LOOSE="$TMP/solta"; mkdir -p "$LOOSE"; echo "nota" > "$LOOSE/notas.txt"
 run session-start "$LOOSE" "$START" | check "fora de projeto: só uma linha (<300 chars)" \
-  "'fora de projeto' in ctx and 'capturing-the-vision' in ctx and len(ctx) < 300"
+  "'fora de projeto' in ctx and 'capturing-the-vision' in ctx and 'dispensar perguntas' in ctx and len(ctx) < 300"
 run session-start "$LOOSE" "$COMPACT" | check "fora de projeto: compactação não injeta nada a mais" \
   "'compactado' not in ctx"
 run user-prompt-submit "$LOOSE" | check "fora de projeto: user-prompt-submit fica quieto" "d == {}"

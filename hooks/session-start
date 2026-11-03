@@ -26,7 +26,7 @@ od_resolve
 
 # Fora de projeto: uma linha. A descrição das skills já está no contexto; isto só aponta o caminho.
 if [ "$OD_IS_PROJECT" = 0 ]; then
-  od_emit SessionStart "[onedirection] Pasta fora de projeto. Se o usuário for começar um projeto novo aqui, use onedirection:capturing-the-vision antes de qualquer código."
+  od_emit SessionStart "[onedirection] Pasta fora de projeto. Se o usuário for começar um projeto novo aqui, use onedirection:capturing-the-vision antes de qualquer código. Se ele dispensar perguntas, o NORTE.md continua sendo o primeiro arquivo: só não entreviste."
   exit 0
 fi
 
@@ -45,6 +45,7 @@ if [ -z "$OD_NORTE" ]; then
 Você tem onedirection. Este projeto (${OD_ROOT}) ainda NÃO tem NORTE.md, o arquivo com a ideia original.
 
 - Pedido de direção (construir, planejar, priorizar, próxima funcionalidade, continuar o projeto): o PRIMEIRO passo é obrigatório. Use onedirection:mapping-existing-project (tem código) ou onedirection:capturing-the-vision (vazio). Outros docs de visão (README, docs/, HANDOFF, memória) não substituem o NORTE.md: são a matéria-prima do mapeamento.
+- Se o usuário dispensar perguntas, o NORTE.md continua sendo o primeiro passo: grave com o que ele disse, sem entrevistar.
 - Bug, ajuste pequeno ou pergunta pontual: faça direto.
 - Fato sobre o projeto só com fonte (arquivo:linha, comando com saída, fala do usuário). Sem fonte: vá ler, ou diga \"não verifiquei\".
 - Antes de dizer pronto, funciona, corrigi, ou de commitar: onedirection:verifying-before-done.
