@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # SessionStart hook do plugin onedirection.
 # Injeta a skill using-onedirection e, se existir, o NORTE.md do projeto.
-# Roda em startup, clear e compact: depois de uma compactação a ideia original volta pro contexto.
+# Roda em startup, clear e compact. Na compactação, manda retomar com recovering-focus.
 
 set -euo pipefail
 
@@ -13,8 +13,13 @@ esac
 PLUGIN_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 PROJECT_DIR="${CLAUDE_PROJECT_DIR:-$PWD}"
 
-# Consome o stdin do hook sem depender de cat.
-while IFS= read -r _ 2>/dev/null; do :; done || :
+# Lê o stdin do hook sem depender de cat (traz "source": startup|clear|compact).
+input=""
+while IFS= read -r line 2>/dev/null || [ -n "$line" ]; do input="${input}${line}"; done || :
+source_kind="startup"
+case "$input" in
+  *'"source":"compact"'*|*'"source": "compact"'*) source_kind="compact" ;;
+esac
 
 skill_md="${PLUGIN_ROOT}/skills/using-onedirection/SKILL.md"
 if [ -r "$skill_md" ]; then
@@ -25,15 +30,32 @@ fi
 
 norte_md="${PROJECT_DIR}/NORTE.md"
 if [ -r "$norte_md" ]; then
+  norte_content="$(<"$norte_md")"
   norte_block="## NORTE.md deste projeto (${PROJECT_DIR})
 
 Esta é a ideia original. Ela manda no escopo.
 
-$(<"$norte_md")"
+${norte_content}"
+  lines=0
+  while IFS= read -r _; do lines=$((lines + 1)); done <<< "$norte_content"
+  if [ "$lines" -gt 120 ]; then
+    norte_block="${norte_block}
+
+> Aviso do onedirection: o NORTE.md tem ${lines} linhas (o ideal é até ~80). Sugira ao usuário enxugar: ele é lido em toda sessão."
+  fi
 else
   norte_block="## Este projeto ainda não tem NORTE.md
 
 Se o usuário for construir algo aqui, a ideia precisa ser capturada antes do código: pasta vazia → onedirection:capturing-the-vision; já tem código → onedirection:mapping-existing-project."
+fi
+
+compact_block=""
+if [ "$source_kind" = "compact" ]; then
+  compact_block="
+
+## O contexto acabou de ser compactado
+
+O resumo acima é uma pista, não uma fonte. Antes de continuar qualquer tarefa, use onedirection:recovering-focus."
 fi
 
 escape_for_json() {
@@ -53,7 +75,7 @@ Você tem onedirection: a ideia original do projeto nunca se perde.
 
 ${skill_content}
 
-${norte_block}
+${norte_block}${compact_block}
 </EXTREMELY_IMPORTANT>"
 
 printf '{\n  "hookSpecificOutput": {\n    "hookEventName": "SessionStart",\n    "additionalContext": "%s"\n  }\n}\n' "$(escape_for_json "$context")"

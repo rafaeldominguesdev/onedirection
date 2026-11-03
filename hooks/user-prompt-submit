@@ -1,17 +1,48 @@
 #!/usr/bin/env bash
 # UserPromptSubmit hook do plugin onedirection.
-# Lembrete de uma linha a cada mensagem, só em projeto que tem NORTE.md.
+# A cada mensagem, em projeto com NORTE.md: lembrete curto + a seção "Foco agora".
 
 set -euo pipefail
 
 while IFS= read -r _ 2>/dev/null; do :; done || :
 
 PROJECT_DIR="${CLAUDE_PROJECT_DIR:-$PWD}"
-if [ ! -r "${PROJECT_DIR}/NORTE.md" ]; then
+norte_md="${PROJECT_DIR}/NORTE.md"
+if [ ! -r "$norte_md" ]; then
   printf '{}\n'
   exit 0
 fi
 
-msg="[onedirection] Este projeto tem NORTE.md (carregado no início da sessão). Se este pedido mexe em escopo, use onedirection:guarding-the-direction antes de agir."
-printf '{\n  "hookSpecificOutput": {\n    "hookEventName": "UserPromptSubmit",\n    "additionalContext": "%s"\n  }\n}\n' "$msg"
+# Extrai a seção "## Foco agora" (até o próximo "## ").
+foco=""
+in_foco=0
+while IFS= read -r line || [ -n "$line" ]; do
+  case "$line" in
+    "## Foco agora"*) in_foco=1; continue ;;
+    "## "*) [ "$in_foco" = 1 ] && break ;;
+  esac
+  if [ "$in_foco" = 1 ] && [ -n "$line" ]; then
+    foco="${foco}${line}
+"
+  fi
+done < "$norte_md"
+
+msg="[onedirection] Este projeto tem NORTE.md. Pedido que mexe em escopo → onedirection:guarding-the-direction. Antes de dizer pronto → onedirection:verifying-before-done. Fato sobre o projeto só com fonte."
+if [ -n "$foco" ]; then
+  msg="${msg}
+Foco agora (NORTE.md):
+${foco%$'\n'}"
+fi
+
+escape_for_json() {
+  local s="$1"
+  s="${s//\\/\\\\}"
+  s="${s//\"/\\\"}"
+  s="${s//$'\n'/\\n}"
+  s="${s//$'\r'/\\r}"
+  s="${s//$'\t'/\\t}"
+  printf '%s' "$s"
+}
+
+printf '{\n  "hookSpecificOutput": {\n    "hookEventName": "UserPromptSubmit",\n    "additionalContext": "%s"\n  }\n}\n' "$(escape_for_json "$msg")"
 exit 0
