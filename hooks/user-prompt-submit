@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 # UserPromptSubmit hook do plugin onedirection.
-# A cada mensagem, só em projeto com NORTE.md: lembrete curto + a seção "Foco agora".
+# Só em projeto com NORTE.md. Adaptativo, pra não repetir a mesma instrução a cada mensagem:
+#   - sempre: a seção "Foco agora" (curta, é o que mantém o trilho);
+#   - só quando o pedido fala de escopo, implementação ou conclusão: a linha de regras.
 # Sem NORTE.md: não injeta nada.
 
 set -euo pipefail
@@ -12,7 +14,7 @@ esac
 # shellcheck source=lib.sh
 . "${SCRIPT_DIR}/lib.sh"
 
-od_read_stdin >/dev/null
+input="$(od_read_stdin)"
 od_resolve
 
 if [ -z "$OD_NORTE" ]; then
@@ -34,10 +36,21 @@ while IFS= read -r line || [ -n "$line" ]; do
   fi
 done < "$OD_NORTE"
 
-msg="[onedirection] Este projeto tem NORTE.md. Ideia nova que serve à promessa: siga. Conflito com trecho do NORTE.md: onedirection:guarding-the-direction. Antes de dizer pronto: onedirection:verifying-before-done. Fato sobre o projeto só com fonte."
+# O pedido mexe em escopo, implementação ou conclusão? (casamento sem diferenciar maiúsculas)
+scope_re='adicion|acrescent|cri[ae]|criar|implement|feature|funcionalidade|nov[ao]|mud[ae]|mudar|troc|integr|refator|remov|tir[ae]|migr|substitu|deploy|public|commit|pront|termin|finaliz|[^a-z]add[^a-z]|build|create|change|replace|refactor|remove|ship|done'
+shopt -s nocasematch
+scope=0
+if [[ "$input" =~ $scope_re ]]; then scope=1; fi
+shopt -u nocasematch
+
+msg=""
+if [ "$scope" = 1 ]; then
+  msg="[onedirection] Ideia nova que serve à promessa: siga. Conflito com trecho do NORTE.md: onedirection:guarding-the-direction. Antes de dizer pronto: onedirection:verifying-before-done. Fato sobre o projeto só com fonte."
+fi
 if [ -n "$foco" ]; then
-  msg="${msg}
-Foco agora (NORTE.md):
+  [ -n "$msg" ] && msg="${msg}
+"
+  msg="${msg}[onedirection] Foco agora (NORTE.md):
 ${foco%$'\n'}"
 fi
 
