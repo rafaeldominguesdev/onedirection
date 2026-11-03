@@ -1,5 +1,11 @@
 # Release notes
 
+## 0.2.2 — 2026-11-02
+
+- guarding-the-direction separa **evolução** (ideia nova do usuário que serve à promessa: segue sem cerimônia e é registrada em Decisões), **troca de foco** (só pergunta se há trabalho pela metade) e **conflito** (bate em trecho citável do NORTE.md: para com as 3 opções). Regra: não estar no NORTE.md ≠ ir contra o NORTE.md.
+- Rigor assimétrico: ideia do usuário é intencional; ideia não pedida do agente é a fuga de verdade.
+- using-onedirection alinhada: conferir não é barrar.
+
 ## 0.2.1 — 2026-11-02
 
 - Sem NORTE.md, pedido de direção (próxima funcionalidade, planejar, continuar) passa obrigatoriamente por mapping-existing-project / capturing-the-vision. Outro doc de visão não substitui o NORTE.md. Achado no teste real no Aprova, em que o agente tratou o mapeamento como opcional por existir `docs/objetivo.md`.
