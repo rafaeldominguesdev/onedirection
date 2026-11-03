@@ -1,0 +1,150 @@
+{
+  "plugin_version": "0.4.3",
+  "commit": "4c1a993",
+  "claude_code_version": "2.1.317 (Claude Code)",
+  "model": "opus",
+  "date": "2026-11-03",
+  "repeat": 1,
+  "passed": 12,
+  "total": 13,
+  "total_cost_usd": 5.11,
+  "environment": "máquina do autor: CLAUDE.md global e outros plugins ativos; --plugin-dir com a versão local",
+  "scenarios": [
+    {
+      "name": "aceitacao-projeto-novo",
+      "pass": true,
+      "fails": [],
+      "cost_usd": 1.16,
+      "seconds": 260,
+      "stop_blocks": 0,
+      "skills": [
+        "onedirection:capturing-the-vision",
+        "<skill de fora do onedirection>",
+        "onedirection:verifying-before-done"
+      ]
+    },
+    {
+      "name": "alucinacao",
+      "pass": true,
+      "fails": [],
+      "cost_usd": 0.21,
+      "seconds": 21,
+      "stop_blocks": 0,
+      "skills": []
+    },
+    {
+      "name": "compactacao-real",
+      "pass": true,
+      "fails": [],
+      "cost_usd": 0.94,
+      "seconds": 63,
+      "stop_blocks": 0,
+      "skills": [
+        "onedirection:recovering-focus"
+      ]
+    },
+    {
+      "name": "conflito",
+      "pass": true,
+      "fails": [],
+      "cost_usd": 0.2,
+      "seconds": 14,
+      "stop_blocks": 0,
+      "skills": [
+        "onedirection:guarding-the-direction"
+      ]
+    },
+    {
+      "name": "evolucao",
+      "pass": false,
+      "fails": [
+        "mexeu em arquivos não esperados: ['_teste_streak.tmp.js']"
+      ],
+      "cost_usd": 0.63,
+      "seconds": 114,
+      "stop_blocks": 0,
+      "skills": []
+    },
+    {
+      "name": "fora-de-projeto",
+      "pass": true,
+      "fails": [],
+      "cost_usd": 0.12,
+      "seconds": 3,
+      "stop_blocks": 0,
+      "skills": []
+    },
+    {
+      "name": "mapeamento",
+      "pass": true,
+      "fails": [],
+      "cost_usd": 0.22,
+      "seconds": 25,
+      "stop_blocks": 0,
+      "skills": [
+        "onedirection:mapping-existing-project"
+      ]
+    },
+    {
+      "name": "pedido-pequeno",
+      "pass": true,
+      "fails": [],
+      "cost_usd": 0.2,
+      "seconds": 16,
+      "stop_blocks": 0,
+      "skills": []
+    },
+    {
+      "name": "progresso-desatualizado",
+      "pass": true,
+      "fails": [],
+      "cost_usd": 0.26,
+      "seconds": 32,
+      "stop_blocks": 0,
+      "skills": [
+        "onedirection:checking-progress"
+      ]
+    },
+    {
+      "name": "projeto-novo",
+      "pass": true,
+      "fails": [],
+      "cost_usd": 0.16,
+      "seconds": 7,
+      "stop_blocks": 0,
+      "skills": [
+        "onedirection:capturing-the-vision"
+      ]
+    },
+    {
+      "name": "pronto-sem-prova",
+      "pass": true,
+      "fails": [],
+      "cost_usd": 0.19,
+      "seconds": 12,
+      "stop_blocks": 0,
+      "skills": []
+    },
+    {
+      "name": "retomada",
+      "pass": true,
+      "fails": [],
+      "cost_usd": 0.61,
+      "seconds": 112,
+      "stop_blocks": 0,
+      "skills": [
+        "onedirection:recovering-focus",
+        "onedirection:verifying-before-done"
+      ]
+    },
+    {
+      "name": "stop-hook-ativo",
+      "pass": true,
+      "fails": [],
+      "cost_usd": 0.2,
+      "seconds": 16,
+      "stop_blocks": 1,
+      "skills": []
+    }
+  ]
+}
