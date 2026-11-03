@@ -1,0 +1,18 @@
+<!doctype html><html lang="pt-BR"><meta charset="utf-8"><title>Estudaí</title>
+<body><div id="card" onclick="virar()"></div><button onclick="proximo()">Próximo</button>
+<button onclick="marcar(true)">Acertei</button><button onclick="marcar(false)">Errei</button>
+<script>
+// TODO: este código está bagunçado, refatorar um dia
+var cards=[["Capital do Brasil?","Brasília"],["2+2?","4"],["Autor de Dom Casmurro?","Machado de Assis"]];
+var i=0,lado=0;
+var errados=[];
+function render(){document.getElementById('card').textContent=cards[i][lado];}
+function virar(){lado=1-lado;render();}
+function proximo(){i=(i+1)%cards.length;lado=0;render();}
+function marcar(acertou){
+  if(!acertou) errados.push(i);
+  // FALTA: quando acabar os cards, mostrar só os errados de novo
+  proximo();
+}
+render();
+</script></body></html>
