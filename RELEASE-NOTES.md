@@ -1,5 +1,13 @@
 # Release notes
 
+## 0.4.4 — 2026-11-03
+
+Correções das três falhas da rodada da 0.4.3 (Opus 12/13, Sonnet 11/13, resultados publicados em `tests/evals/results/0.4.3-*.json`).
+
+- **"Sem perguntas" não dispensa o NORTE.md** (Sonnet, `aceitacao-projeto-novo`): ele pulou o arquivo e explicou "porque você disse para não fazer perguntas". O hook fora de projeto e o de projeto sem NORTE.md agora dizem que dispensar perguntas tira a entrevista, não o arquivo.
+- **Anunciar uma skill sem chamá-la não conta** (Sonnet, `compactacao-real`): ele escreveu "Usando onedirection:recovering-focus" sem chamar a ferramenta `Skill`. Regra e sinal de alerta novos em using-onedirection.
+- **Arquivo temporário de verificação** (Opus, `evolucao`): deixou `_teste_streak.tmp.js` no projeto. O passo de escopo de verifying-before-done agora inclui `git status` e manda criar scripts de teste fora do projeto ou apagá-los.
+
 ## 0.4.3 — 2026-11-03
 
 Resposta à segunda revisão técnica: promessas do tamanho do código, fronteira de confiança e evidência reproduzível.
