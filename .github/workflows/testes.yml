@@ -1,0 +1,34 @@
+name: testes
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  hooks:
+    name: hooks (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Testes dos hooks e da estrutura
+        run: bash tests/hooks/test-hooks.sh
+      - name: Hooks também no bash do sistema (3.2 no macOS)
+        if: runner.os == 'macOS'
+        run: /bin/bash tests/hooks/test-hooks.sh
+      - name: NORTE.md de exemplo é válido
+        run: scripts/validate-norte tests/evals/fixtures/estudai/NORTE.md
+
+  plugin:
+    name: claude plugin validate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm install -g @anthropic-ai/claude-code
+      - run: claude plugin validate .

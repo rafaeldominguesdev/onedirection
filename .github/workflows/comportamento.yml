@@ -1,0 +1,41 @@
+name: comportamento
+
+# Testes de comportamento rodam sessões reais do Claude e custam (~US$ 3 a rodada).
+# Por isso só rodam à mão: Actions > comportamento > Run workflow.
+# Requer o segredo ANTHROPIC_API_KEY no repositório.
+
+on:
+  workflow_dispatch:
+    inputs:
+      cenarios:
+        description: "Cenários separados por espaço (vazio = todos)"
+        required: false
+        default: ""
+      modelo:
+        description: "Modelo"
+        required: false
+        default: "opus"
+
+jobs:
+  evals:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm install -g @anthropic-ai/claude-code
+      - name: Rodar cenários
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          EVAL_MODEL: ${{ inputs.modelo }}
+          EVAL_OUT: evals-out
+        run: |
+          git config --global user.email "eval@example.com"
+          git config --global user.name "eval"
+          python3 tests/evals/run.py ${{ inputs.cenarios }}
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: transcripts
+          path: evals-out
