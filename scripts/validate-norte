@@ -1,0 +1,28 @@
+#!/usr/bin/env bash
+# Valida a estrutura de um NORTE.md.
+#   scripts/validate-norte                 # ./NORTE.md
+#   scripts/validate-norte caminho/NORTE.md
+# Saída 0 = ok; 1 = problemas (um por linha); 2 = arquivo não encontrado.
+set -euo pipefail
+
+case "$0" in
+  */*) SCRIPT_DIR="$(cd "${0%/*}" && pwd)" ;;
+  *) SCRIPT_DIR="$(pwd)" ;;
+esac
+# shellcheck source=../hooks/lib.sh
+. "${SCRIPT_DIR}/../hooks/lib.sh"
+
+file="${1:-NORTE.md}"
+if [ ! -f "$file" ]; then
+  echo "não encontrei $file" >&2
+  exit 2
+fi
+
+problems="$(od_validate_norte "$file")"
+if [ -z "$problems" ]; then
+  echo "$file: ok"
+  exit 0
+fi
+echo "$file: problemas encontrados"
+while IFS= read -r p; do echo "  - $p"; done <<< "$problems"
+exit 1
