@@ -19,9 +19,8 @@ PLUGIN_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
 input="$(od_read_stdin)"
 source_kind="startup"
-case "$input" in
-  *'"source":"compact"'*|*'"source": "compact"'*) source_kind="compact" ;;
-esac
+compact_re='"source"[[:space:]]*:[[:space:]]*"compact"'
+if [[ "$input" =~ $compact_re ]]; then source_kind="compact"; fi
 
 od_resolve
 
@@ -68,12 +67,12 @@ norte_block="## NORTE.md deste projeto (${OD_NORTE})
 Esta é a ideia original. Ela manda no escopo.
 
 ${norte_content}"
-lines=0
-while IFS= read -r _; do lines=$((lines + 1)); done <<< "$norte_content"
-if [ "$lines" -gt 120 ]; then
+problems="$(od_validate_norte "$OD_NORTE")"
+if [ -n "$problems" ]; then
   norte_block="${norte_block}
 
-> Aviso do onedirection: o NORTE.md tem ${lines} linhas (o ideal é até ~80). Sugira ao usuário enxugar: ele é lido em toda sessão."
+> Aviso do onedirection: o NORTE.md tem problemas. Avise o usuário uma vez, em poucas linhas, e proponha corrigir (não corrija sem ele):
+$(while IFS= read -r p; do printf -- '> - %s\n' "$p"; done <<< "$problems")"
 fi
 
 od_emit SessionStart "<EXTREMELY_IMPORTANT>
