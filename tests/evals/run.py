@@ -10,6 +10,8 @@ Uso:
     python3 tests/evals/run.py                    # todos os cenários
     python3 tests/evals/run.py conflito evolucao  # só alguns
     python3 tests/evals/run.py --repeat 3         # cada cenário 3 vezes (mede instabilidade)
+    python3 tests/evals/run.py --save-results tests/evals/results/X.json   # grava o resumo da rodada
+    python3 tests/evals/run.py --replay PASTA     # recorrige uma rodada salva, SEM chamar a API
 
 Variáveis:
     EVAL_MODEL  modelo (padrão: opus)
@@ -227,7 +229,9 @@ def grade(sc: dict, t: dict, before: dict, after: dict) -> list:
                 path = str(i.get("file_path") or i.get("notebook_path") or "")
                 if n in stop_check.EDIT_TOOLS and not path.lower().endswith((".md", ".markdown", ".txt")):
                     last_edit, verified = path, False
-                elif last_edit and (n in stop_check.CHECK_TOOLS or (n == "Skill" and "verifying-before-done" in str(i.get("skill", "")))):
+                elif last_edit and (n in stop_check.RUN_TOOLS
+                                    or (n in stop_check.LOOK_TOOLS and stop_check.looks_at(n, i, last_edit))
+                                    or (n == "Skill" and "verifying-before-done" in str(i.get("skill", "")))):
                     verified = True
             else:
                 final.append(n)
@@ -272,6 +276,8 @@ def run_one(sc: dict, rep: int, out_dir: Path) -> dict:
         before = snapshot(work)
         run_claude(sc, work, transcript)
         after = snapshot(work)
+        # Foto dos arquivos ao lado do transcript: permite recorrigir depois sem API (--replay).
+        transcript.with_suffix(".files.json").write_text(json.dumps({"before": before, "after": after}, ensure_ascii=False))
         t = parse(transcript)
         fails = grade(sc, t, before, after)
     except subprocess.TimeoutExpired:
@@ -286,10 +292,58 @@ def run_one(sc: dict, rep: int, out_dir: Path) -> dict:
             "transcript": str(transcript)}
 
 
+def replay(spec: list, folder: Path) -> list:
+    """Recorrige transcripts + fotos já salvos, sem chamar a API."""
+    results = []
+    by_name = {s["name"]: s for s in spec}
+    for tr in sorted(folder.glob("*.jsonl")):
+        name = re.sub(r"-\d+$", "", tr.stem)
+        files = tr.with_suffix(".files.json")
+        if name not in by_name or not files.exists():
+            continue
+        snap = json.loads(files.read_text())
+        t = parse(tr)
+        # No replay, o caminho do plugin é o de quem rodou: só conferimos que ele foi carregado.
+        fails = [f for f in grade(by_name[name], t, snap["before"], snap["after"]) if not f.startswith("plugin local")]
+        if not t["plugin_paths"]:
+            fails.insert(0, "plugin não carregado")
+        results.append({"tag": tr.stem, "fails": fails, "cost": t["cost"], "turns": t["turns"], "skills": t["skills"],
+                        "ctx": t["context_chars"], "stops": t["stop_blocks"], "secs": 0, "transcript": str(tr)})
+    return results
+
+
+def save_results(path: Path, results: list, repeat: int):
+    def sh(*cmd):
+        try:
+            return subprocess.run(cmd, capture_output=True, text=True, cwd=ROOT).stdout.strip()
+        except OSError:
+            return ""
+    summary = {
+        "plugin_version": json.loads((ROOT / ".claude-plugin/plugin.json").read_text())["version"],
+        "commit": sh("git", "rev-parse", "--short", "HEAD"),
+        "claude_code_version": sh("claude", "--version"),
+        "model": MODEL,
+        "date": time.strftime("%Y-%m-%d"),
+        "repeat": repeat,
+        "passed": sum(1 for r in results if not r["fails"]),
+        "total": len(results),
+        "total_cost_usd": round(sum(r["cost"] for r in results), 2),
+        "environment": "máquina do autor: CLAUDE.md global e outros plugins ativos; --plugin-dir com a versão local",
+        "scenarios": [{"name": r["tag"], "pass": not r["fails"], "fails": r["fails"], "cost_usd": round(r["cost"], 2),
+                       "seconds": r["secs"], "stop_blocks": r["stops"], "skills": r["skills"]}
+                      for r in sorted(results, key=lambda x: x["tag"])],
+    }
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(summary, indent=2, ensure_ascii=False) + "\n")
+    print(f"resumo gravado em {path}")
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("names", nargs="*", help="cenários a rodar (padrão: todos)")
     ap.add_argument("--repeat", type=int, default=1)
+    ap.add_argument("--replay", metavar="PASTA", help="recorrige transcripts salvos, sem chamar a API")
+    ap.add_argument("--save-results", metavar="ARQUIVO", help="grava o resumo da rodada em JSON")
     args = ap.parse_args()
 
     spec = json.loads((HERE / "scenarios.json").read_text())["scenarios"]
@@ -298,6 +352,16 @@ def main():
         if unknown:
             sys.exit(f"cenário desconhecido: {sorted(unknown)}")
         spec = [s for s in spec if s["name"] in args.names]
+
+    if args.replay:
+        results = replay(spec, Path(args.replay))
+        for r in results:
+            print(f"{'PASS' if not r['fails'] else 'FAIL'}  {r['tag']:<26} stop {r['stops']}  skills {r['skills'] or '-'}")
+            for f in r["fails"]:
+                print(f"        - {f}")
+        passed = sum(1 for r in results if not r["fails"])
+        print(f"\nreplay: {passed}/{len(results)} passaram (sem chamar a API)")
+        sys.exit(0 if results and passed == len(results) else 1)
 
     out_dir = Path(os.environ.get("EVAL_OUT") or tempfile.mkdtemp(prefix="onedirection-evals-"))
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -318,6 +382,8 @@ def main():
 
     passed = sum(1 for r in results if not r["fails"])
     print(f"\n{passed}/{len(results)} passaram · custo total US$ {sum(r['cost'] for r in results):.2f}")
+    if args.save_results:
+        save_results(Path(args.save_results), results, args.repeat)
     sys.exit(0 if passed == len(results) else 1)
 
 
