@@ -22,6 +22,32 @@ jobs:
       - name: NORTE.md de exemplo é válido
         run: scripts/validate-norte tests/evals/fixtures/estudai/NORTE.md
 
+  lint:
+    name: lint (bash, python, shellcheck, versão)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Sintaxe dos scripts bash
+        run: for f in hooks/session-start hooks/user-prompt-submit hooks/stop hooks/lib.sh scripts/* tests/hooks/test-hooks.sh; do bash -n "$f"; done
+      - name: Python compila
+        run: python3 -m py_compile hooks/stop_check.py tests/evals/run.py tests/evals/sanitize.py
+      - name: ShellCheck
+        run: shellcheck -x -P SCRIPTDIR -s bash hooks/session-start hooks/user-prompt-submit hooks/stop hooks/lib.sh scripts/* tests/hooks/test-hooks.sh
+      - name: Versão igual nos manifestos e nas notas
+        run: scripts/check-version
+
+  install:
+    name: instalação real pelo marketplace
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 20
+      - run: npm install -g @anthropic-ai/claude-code
+      - name: Instala numa configuração temporária e roda os hooks da cópia instalada
+        run: scripts/test-install
+
   plugin:
     name: claude plugin validate
     runs-on: ubuntu-latest
