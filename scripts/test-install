@@ -1,0 +1,41 @@
+#!/usr/bin/env bash
+# shellcheck disable=SC2015  # ok() só faz echo e nunca falha, então "A && ok || bad" é seguro aqui
+# Teste de instalação de verdade, numa configuração do Claude Code temporária (não mexe na sua):
+# adiciona este repositório como marketplace, instala o plugin, confere versão, skills e hooks,
+# e roda os hooks A PARTIR DA CÓPIA INSTALADA. Não chama a API.
+set -euo pipefail
+case "$0" in */*) ROOT="$(cd "${0%/*}/.." && pwd)" ;; *) ROOT="$(cd .. && pwd)" ;; esac
+TMP="$(mktemp -d)"
+trap 'rm -rf "$TMP"' EXIT
+export CLAUDE_CONFIG_DIR="$TMP/config"
+fail=0
+ok() { echo "ok   $1"; }
+bad() { echo "FAIL $1"; fail=1; }
+
+want="$(python3 -c "import json;print(json.load(open('$ROOT/.claude-plugin/plugin.json'))['version'])")"
+claude plugin marketplace add "$ROOT" >/dev/null 2>&1 && ok "marketplace adicionado" || bad "marketplace adicionado"
+claude plugin install onedirection@onedirection >/dev/null 2>&1 && ok "plugin instalado" || bad "plugin instalado"
+
+info="$(claude plugin list --json 2>/dev/null)"
+read -r version enabled install_path < <(python3 -c "
+import json,sys
+p=[x for x in json.loads(sys.stdin.read()) if x['id']=='onedirection@onedirection']
+print(p[0]['version'], p[0]['enabled'], p[0]['installPath']) if p else print('- - -')" <<< "$info")
+[ "$version" = "$want" ] && ok "versão instalada = $want" || bad "versão instalada ($version, esperado $want)"
+[ "$enabled" = "True" ] && ok "plugin habilitado" || bad "plugin habilitado ($enabled)"
+
+details="$(claude plugin details onedirection@onedirection 2>&1 || true)"
+echo "$details" | grep -q "Skills (7)" && ok "7 skills carregadas" || bad "7 skills carregadas"
+echo "$details" | grep -q "Hooks (3)" && echo "$details" | grep -q "SessionStart, Stop, UserPromptSubmit" && ok "3 hooks carregados" || bad "3 hooks carregados"
+echo "$details" | grep -E "Always-on" | sed 's/^ */     custo fixo: /'
+
+# Os hooks rodam a partir da cópia instalada (não do repositório).
+PROJ="$TMP/projeto"; mkdir -p "$PROJ/.git"; cp "$ROOT/tests/evals/fixtures/estudai/NORTE.md" "$PROJ/NORTE.md"
+out="$(echo '{"source":"startup"}' | CLAUDE_PLUGIN_ROOT="$install_path" CLAUDE_PROJECT_DIR="$PROJ" "$install_path/hooks/session-start")"
+echo "$out" | python3 -c "import json,sys;c=json.load(sys.stdin)['hookSpecificOutput']['additionalContext'];assert 'Estudaí' in c and '<norte-md>' in c" 2>/dev/null \
+  && ok "SessionStart da cópia instalada injeta o NORTE.md" || bad "SessionStart da cópia instalada injeta o NORTE.md"
+out="$(echo '{}' | CLAUDE_PLUGIN_ROOT="$install_path" CLAUDE_PROJECT_DIR="$PROJ" "$install_path/hooks/user-prompt-submit")"
+echo "$out" | grep -q "Foco agora" && ok "UserPromptSubmit da cópia instalada traz o Foco agora" || bad "UserPromptSubmit da cópia instalada traz o Foco agora"
+out="$(echo '{"transcript_path":"/nao/existe"}' | "$install_path/hooks/stop")"
+[ "$out" = "{}" ] && ok "Stop da cópia instalada responde" || bad "Stop da cópia instalada responde ($out)"
+exit $fail
