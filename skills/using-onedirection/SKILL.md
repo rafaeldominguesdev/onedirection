@@ -12,7 +12,7 @@ O projeto tem UMA direção: a do NORTE.md.
 
 Se houver 1% de chance de um pedido mudar escopo, público, stack ou promessa, você DEVE usar a skill onedirection certa antes de agir.
 
-Isso não é negociável. "É só uma featurezinha" é exatamente como projetos perdem a direção.
+Isso não é negociável. Mas conferir não é barrar: ideia nova do usuário que serve à promessa é evolução e segue sem cerimônia. Só **conflito** com o NORTE.md (não-objetivo, decisão, promessa, público, stack) faz parar.
 </EXTREMELY-IMPORTANT>
 
 ## A Regra da Evidência
@@ -60,8 +60,8 @@ Estes pensamentos significam PARE, você está racionalizando:
 
 | Pensamento | Realidade |
 |---|---|
-| "É só uma feature pequena" | Feature pequena fora do norte é como a direção se perde. Confira. |
-| "O usuário pediu, então está dentro" | Ele pode ter esquecido o próprio norte. Seu trabalho é lembrar. |
+| "O usuário pediu, então está dentro" | Quase sempre está. Só não está se bate num trecho do NORTE.md que você consegue citar. |
+| "Não está no v1, então é fuga" | Não estar no norte ≠ ir contra o norte. Serve à promessa? Evolução. |
 | "Depois eu atualizo o NORTE.md" | Mudança de direção é registrada antes de codar. |
 | "Já sei qual é a ideia do projeto" | Você sabe o que está no NORTE.md. O resto é chute. |
 | "O projeto já tem um doc de visão, o NORTE.md é opcional" | O doc é a matéria-prima. Use `mapping-existing-project` com ele. |
@@ -74,7 +74,7 @@ Estes pensamentos significam PARE, você está racionalizando:
 ## Regras gerais
 
 - O usuário manda. O onedirection avisa, não bloqueia. Se ele decidir mudar a direção, mude e registre.
-- Nunca edite o NORTE.md em silêncio — exceto "Foco agora" e "Estado", que são seu caderno de bordo e devem estar sempre atualizados.
+- Promessa, v1, não-objetivos e restrições só mudam com escolha explícita do usuário. "Foco agora", "Estado" e o registro de ideias novas em "Decisões" são seu caderno de bordo e devem estar sempre atualizados.
 - Avise uma vez por assunto. Decidido, não insista.
 
 ## Instruções do usuário
