@@ -145,7 +145,7 @@ run session-start "$SPACED" "$START" | check "session-start não avisa quando o 
 
 # --- Lembrete adaptativo
 run user-prompt-submit "$SPACED" '{"prompt":"adiciona um botão de embaralhar"}' | check "pedido de escopo: lembrete de regras + Foco agora" \
-  "'guarding-the-direction' in ctx and 'Foco agora' in ctx"
+  "'guarding-the-direction' in ctx and 'registre em 1 linha' in ctx and 'Foco agora' in ctx"
 run user-prompt-submit "$SPACED" '{"prompt":"o que essa função faz?"}' | check "pergunta comum: só o Foco agora, sem repetir as regras" \
   "'guarding-the-direction' not in ctx and 'Foco agora' in ctx"
 printf '# NORTE\n\n## A promessa\nX\n' > "$BAD/NORTE.md"
@@ -180,6 +180,8 @@ stop_case "edição + releitura depois + 'pronto': passa" allow "" "$U" "$EDIT" 
 stop_case "edição + skill verifying depois + 'pronto': passa" allow "" "$U" "$EDIT" "$RES" "$VSKILL" "$RES" "$DONE"
 stop_case "releitura só ANTES da edição: bloqueia" block "" "$U" "$READ" "$RES" "$EDIT" "$RES" "$DONE"
 stop_case "'pronto' + 'não verifiquei': passa" allow "" "$U" "$EDIT" "$RES" "$HONEST"
+OPUSREAL='{"type":"assistant","message":{"content":[{"type":"text","text":"Pronto: o botão agora diz Próximo card. Como você pediu, não reli o arquivo nem abri a página no navegador."}]}}'
+stop_case "frase real do Opus ('não reli... nem abri'): passa" allow "" "$U" "$EDIT" "$RES" "$OPUSREAL"
 stop_case "edição sem afirmar conclusão: passa" allow "" "$U" "$EDIT" "$RES" "$ASK"
 stop_case "só Markdown editado: passa" allow "" "$U" "$EDITMD" "$RES" "$DONE"
 stop_case "edição em turno ANTERIOR não conta: passa" allow "" "$U" "$EDIT" "$RES" "$DONE" "$U" "$DONE"
