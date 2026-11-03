@@ -12,6 +12,7 @@ onedirection é uma disciplina de foco pro seu agente de código: um conjunto de
 - [O que tem dentro](#o-que-tem-dentro)
 - [Filosofia](#filosofia)
 - [Testes](#testes)
+- [Compatibilidade e limites](#compatibilidade-e-limites)
 - [Contribuindo](#contribuindo)
 - [Atualizando](#atualizando)
 - [Licença](#licença)
@@ -47,6 +48,9 @@ claude plugin install onedirection@onedirection
 ```
 
 ## O fluxo básico
+
+A cerimônia é proporcional ao risco: **rápido** pra bug e ajuste (faz direto), **normal** pra funcionalidade nova (faz e registra), **rigoroso** pra arquitetura, segurança ou conflito com o norte, e **projeto novo** com entrevista. A matriz completa de quando cada skill entra está em [`docs/gatilhos.md`](docs/gatilhos.md), e um exemplo do começo ao fim em [`docs/exemplo-completo.md`](docs/exemplo-completo.md).
+
 
 1. **capturing-the-vision** — Ativa antes de construir qualquer coisa num projeto novo. Entrevista uma pergunta por vez, devolve o que entendeu em partes, separa o que você disse do que ele propôs e grava o `NORTE.md`. Nada de código antes da sua aprovação.
 2. **mapping-existing-project** — Ativa num projeto com código e sem `NORTE.md`. Lê docs, história do git e código; toda afirmação tem fonte; o que é dedução fica `(?)`; aponta os desvios e confirma com você.
@@ -107,7 +111,17 @@ Se o Claude parecer perdido — repetindo trabalho, inventando nome de arquivo, 
   - **projeto sem `NORTE.md`**: as regras essenciais em poucas linhas (~1.000 caracteres);
   - **fora de projeto** (sem git, sem manifesto, ou a sua pasta pessoal): uma linha (~150 caracteres).
   Na compactação, em projeto, manda usar `recovering-focus`.
-- **UserPromptSubmit** — só em projetos com `NORTE.md`: um lembrete de uma linha e a seção "Foco agora".
+- **UserPromptSubmit** — só em projetos com `NORTE.md`: sempre a seção "Foco agora"; a linha de regras só quando o pedido fala de escopo, implementação ou conclusão.
+- **Stop** — "pronto" sem prova não passa. Se o Claude editou código, não conferiu nada depois da última edição e diz que terminou sem admitir que não verificou, a resposta volta pra ele **uma vez** pra conferir ou declarar "Não verifiquei: …". Precisa de `python3`; sem ele, esse hook não faz nada.
+
+### Validador do NORTE.md
+
+```bash
+scripts/validate-norte            # ./NORTE.md
+scripts/validate-norte outro/NORTE.md
+```
+
+Confere se as seções existem, se o v1 tem itens, se há não-objetivos e critério de pronto, se sobrou trecho do modelo sem preencher e se o arquivo não passou de 120 linhas. O hook de início de sessão roda a mesma validação e, se achar problema, o Claude te avisa uma vez.
 
 ## Filosofia
 
@@ -136,8 +150,33 @@ Os testes de comportamento rodam cada cenário de `tests/evals/scenarios.json` n
 | `mapeamento` | Projeto sem `NORTE.md`: mapeia primeiro e não grava nada sem aprovação |
 | `projeto-novo` | Pasta vazia: entrevista antes de qualquer código |
 | `fora-de-projeto` | Fora de projeto: fica quieto e quase não gasta contexto |
+| `pronto-sem-prova` | Usuário pede pra não conferir: pode atender, mas não afirma que funciona sem admitir |
+| `progresso-desatualizado` | `NORTE.md` diz que o v1 está pronto e o código não: checkbox não é prova |
+| `aceitacao-projeto-novo` | Ponta a ponta: `NORTE.md` escrito **antes** do código, com os não-objetivos do usuário |
 
 Rode um só com `python3 tests/evals/run.py conflito`, e meça instabilidade com `--repeat 3`.
+
+No GitHub, os testes dos hooks rodam a cada push (Ubuntu e macOS, incluindo o bash 3.2 do macOS) junto com `claude plugin validate`. Os de comportamento custam, então rodam à mão: **Actions › comportamento › Run workflow**, com o segredo `ANTHROPIC_API_KEY` configurado.
+
+## Compatibilidade e limites
+
+| Tema | Situação |
+|---|---|
+| Claude Code | Testado na 2.1.316. Usa hooks de plugin `SessionStart`, `UserPromptSubmit` e `Stop` |
+| Sistema | macOS (bash 3.2 do sistema ou mais novo) e Linux. **Windows não é suportado** |
+| `python3` | Opcional. Só o hook de fim de resposta usa; sem ele, esse hook fica desligado e o resto funciona |
+| Sem git | Funciona. O projeto é reconhecido por manifesto (`package.json`, `Cargo.toml`…); `recovering-focus` perde a parte do histórico |
+| Monorepo | O `NORTE.md` é procurado na pasta onde o Claude abriu e depois na raiz do git. Um por pacote, ou um na raiz |
+| Worktrees | Funciona: o `NORTE.md` é versionado e o `.git` em forma de arquivo é reconhecido |
+| Pasta pessoal | Nunca é tratada como projeto, mesmo com repositório de dotfiles |
+| Outros plugins de fluxo | Pensado pra conviver com a superpowers (onedirection decide **o quê**, ela decide **o como**). **Ainda não testado em conjunto** |
+| Contexto gasto | Fora de projeto ~150 caracteres; projeto sem `NORTE.md` ~900; com `NORTE.md`, a skill de entrada inteira + o arquivo |
+
+**Desativar por um tempo:** `/plugin disable onedirection@onedirection` (reative com `/plugin enable onedirection@onedirection`).
+
+**`NORTE.md` desatualizado:** peça "confere o progresso" (dispara `checking-progress`, que compara cada item com o código) ou rode `scripts/validate-norte` pra conferir a estrutura.
+
+**Limite honesto:** as regras são instruções pro modelo, e só uma delas é cobrada por código (o hook de "pronto" sem prova). O resto é medido pelos testes de comportamento, não garantido.
 
 ## Contribuindo
 
