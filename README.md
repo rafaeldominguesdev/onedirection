@@ -213,14 +213,14 @@ No GitHub, os testes dos hooks rodam a cada push (Ubuntu e macOS, incluindo o ba
 
 **`NORTE.md` desatualizado:** peça "confere o progresso" (dispara `checking-progress`, que compara cada item com o código) ou rode `scripts/validate-norte` pra conferir a estrutura.
 
-### Custo de contexto (medido na 0.4.3)
+### Custo de contexto (medido na 0.4.4)
 
 | Situação | No início da sessão | A cada mensagem |
 |---|---|---|
 | Sempre (descrições das 7 skills) | ~466 tokens | — |
-| Fora de projeto | +148 caracteres (~37 tokens) | nada |
-| Projeto sem `NORTE.md` | +906 caracteres (~226 tokens) | nada |
-| Projeto com `NORTE.md` (exemplo de 898 bytes) | +7.994 caracteres (~2.000 tokens) | +429 caracteres (~107 tokens) |
+| Fora de projeto | +241 caracteres (~60 tokens) | nada |
+| Projeto sem `NORTE.md` | +1.030 caracteres (~257 tokens) | nada |
+| Projeto com `NORTE.md` (exemplo de 898 bytes) | +8.402 caracteres (~2.100 tokens) | +429 caracteres (~107 tokens) |
 
 O `NORTE.md` injetado é cortado em 12.000 caracteres. Os números de skill vêm de `claude plugin details onedirection@onedirection`; os dos hooks, dos próprios hooks.
 
