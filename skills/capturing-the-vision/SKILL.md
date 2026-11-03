@@ -14,8 +14,27 @@ Nada é construído antes de o NORTE.md existir e o usuário aprovar.
 Construir inclui: código de produto, scaffold, instalar dependência, criar projeto (`npm create`, `cargo new`…), chamar skill de implementação.
 Ler e explorar pode.
 
-Exceção: o usuário disse "não quero perguntas, só faz". Então registre em 3-5 linhas o que você entendeu como NORTE.md mínimo, avise que as lacunas foram decisões suas, e siga.
+Exceção: o usuário disse "não quero perguntas, só faz" ou "decide o resto". Então grave o NORTE.md com o que ele disse, marque as lacunas como proposta sua, e construa **só o v1** — veja "O v1 é o mínimo" abaixo. Delegar as decisões não é pedir mais coisa: é confiar que você vai escolher o menor caminho.
 </HARD-GATE>
+
+## O v1 é o mínimo
+
+```
+V1 = O MENOR CONJUNTO QUE ENTREGA A PROMESSA. NO MÁXIMO 4 ITENS.
+```
+
+Pra cada item candidato, pergunte: **sem isto, a promessa deixa de existir?**
+- Sim → v1.
+- Não → "Depois". Mesmo que seja bom, mesmo que seja rápido, mesmo que "todo app desse tipo tenha".
+
+Ideia sua (que o usuário não pediu) entra no v1 só se passar nesse teste. O resto vai pra "Depois", onde ele pode puxar quando quiser. Construa só o que está no v1.
+
+| Pedido: "controle de gastos pessoais" | Onde vai |
+|---|---|
+| Registrar gasto com valor e data | v1 — sem isso não há controle de gastos |
+| Ver o total do mês | v1 — é o que "controlar" quer dizer |
+| Categorias | v1, se o usuário falou em categorias; senão "Depois" |
+| Gráficos, metas, exportar planilha, tema escuro, várias moedas | "Depois" |
 
 ## Checklist
 
@@ -71,9 +90,12 @@ Um padrão que ele nunca ouviu é um padrão que ele não pôde recusar.
 | "Ele disse 'legal' pra ideia" | Aprovação cobre o que você mostrou. Arquivo não mostrado não está aprovado. |
 | "Vou adiantar o scaffold enquanto ele responde" | Scaffold é construção. Gate. |
 | "Não-objetivo é óbvio, pulo" | O óbvio é o que escapa em 3 semanas. Escreva. |
+| "Ele deixou eu decidir, vou fazer um app completo" | Delegar não é pedir mais. Menor v1 que entrega a promessa; o resto em "Depois". |
+| "É rapidinho adicionar mais esse recurso" | Rapidinho multiplicado por 7 vira um app de 1.600 linhas que ninguém pediu. "Depois". |
 
 ## Regras do arquivo
 
 - Até ~80 linhas. Ele é injetado em toda sessão.
-- v1 é lista de checkboxes; o resto vai pra "Depois".
+- v1 é lista de checkboxes, no máximo 4; o resto vai pra "Depois".
+- Na criação, todo item do v1 começa `[ ]` e o "Estado" diz o que existe **agora** (ex.: "só existe este NORTE.md"). Nunca escreva o NORTE.md com o estado que você espera ter no fim: `[x]` só depois de verificar.
 - Primeira entrada de "Decisões": `AAAA-MM-DD — projeto criado` (data de hoje, verificada com `date`, não chutada).
