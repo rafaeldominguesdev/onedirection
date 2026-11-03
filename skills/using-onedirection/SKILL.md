@@ -37,7 +37,20 @@ Vale pra nomes de função, caminhos de arquivo, o que está pronto, o que o usu
 | Contexto foi compactado, sessão retomada, "você se perdeu" | `onedirection:recovering-focus` |
 | "Onde estamos?", "quanto falta?", fim de etapa grande | `onedirection:checking-progress` |
 
-Pedido pequeno e óbvio (bug, ajuste visual, pergunta sobre o código) que cabe no NORTE.md e no "Foco agora": faça direto. Mas `verifying-before-done` vale pra tudo — inclusive pro pequeno.
+### Níveis de rigor
+
+A cerimônia é proporcional ao risco. Burocracia em tarefa pequena faz o usuário desligar o plugin.
+
+| Nível | Quando | O que fazer |
+|---|---|---|
+| **Rápido** | Bug, texto, estilo, ajuste de 1-2 arquivos, pergunta sobre o código | Faça direto. Sem anúncio, sem pergunta. Só confira o resultado antes de dizer pronto. |
+| **Normal** | Funcionalidade nova que serve à promessa | Faça. Registre em "Decisões" e atualize "Foco agora". Verificação completa no fim. |
+| **Rigoroso** | Arquitetura, stack, segurança, dados do usuário, ou conflito com o NORTE.md | `guarding-the-direction` antes de codar; `verifying-before-done` com o portão inteiro. |
+| **Projeto novo** | Pasta vazia, ou projeto sem NORTE.md + pedido de direção | `capturing-the-vision` / `mapping-existing-project` antes de qualquer código. |
+
+Na dúvida entre dois níveis, use o mais leve — a menos que haja um trecho do NORTE.md em jogo.
+
+`verifying-before-done` vale pra todos os níveis: se você editar código e disser "pronto" sem ter conferido nada depois da última edição, um hook devolve a resposta pra você uma vez. Confira, ou diga "Não verifiquei: <o quê> — porque <motivo>".
 
 ### Sem NORTE.md, qualquer pedido de direção passa pelo mapeamento
 
