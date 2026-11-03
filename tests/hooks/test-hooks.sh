@@ -97,6 +97,98 @@ for i in $(seq 1 130); do echo "- linha $i"; done >> "$PROJ/NORTE.md"
 run session-start "$PROJ" "$START" | check "NORTE.md com mais de 120 linhas gera aviso" \
   "'o ideal é até ~80' in ctx"
 
+# --- Worktree: .git é um arquivo, não uma pasta
+WT="$TMP/worktree"; mkdir -p "$WT/src"; echo "gitdir: /outro/lugar/.git/worktrees/wt" > "$WT/.git"
+cp "$ROOT/tests/evals/fixtures/estudai/NORTE.md" "$WT/NORTE.md"
+run session-start "$WT/src" "$START" | check "worktree (.git arquivo): acha o NORTE.md na raiz" \
+  "'Estudaí ajuda vestibulandos' in ctx"
+
+# --- Compactação com espaços no JSON de entrada
+run session-start "$PROJ" '{ "source" : "compact" }' | check "compact com espaços no JSON também é reconhecido" \
+  "'acabou de ser compactado' in ctx"
+
+# --- Pasta com espaços no nome
+SPACED="$TMP/meu projeto com espaço"; mkdir -p "$SPACED/.git" "$SPACED/sub pasta"
+cp "$ROOT/tests/evals/fixtures/estudai/NORTE.md" "$SPACED/NORTE.md"
+run session-start "$SPACED/sub pasta" "$START" | check "pasta com espaço no nome: acha o NORTE.md" \
+  "'Estudaí ajuda vestibulandos' in ctx"
+run user-prompt-submit "$SPACED" | check "pasta com espaço no nome: user-prompt-submit funciona" \
+  "'Próximo passo: botões acertei/errei' in ctx"
+
+# --- Validação do NORTE.md
+VALIDATE="$ROOT/scripts/validate-norte"
+if "$VALIDATE" "$ROOT/tests/evals/fixtures/estudai/NORTE.md" >/dev/null; then
+  echo "ok   validate-norte: NORTE.md completo passa"
+else
+  echo "FAIL validate-norte: NORTE.md completo passa"; fail=1
+fi
+out="$("$VALIDATE" "$ROOT/skills/capturing-the-vision/norte-template.md" || true)"
+if echo "$out" | grep -q "linha(s) do modelo sem preencher" && echo "$out" | grep -q "v1 não tem nenhum item"; then
+  echo "ok   validate-norte: modelo sem preencher é apontado"
+else
+  echo "FAIL validate-norte: modelo sem preencher é apontado"; echo "$out"; fail=1
+fi
+BAD="$TMP/ruim"; mkdir -p "$BAD/.git"
+printf '# NORTE — ruim\n\n## A promessa\nAjuda alguém.\n\n## v1 obrigatório\n- [ ] algo\n' > "$BAD/NORTE.md"
+out="$("$VALIDATE" "$BAD/NORTE.md" || true)"
+if echo "$out" | grep -q "NÃO é" && echo "$out" | grep -q "Pronto quando" && echo "$out" | grep -q "Foco agora"; then
+  echo "ok   validate-norte: seções faltando são listadas"
+else
+  echo "FAIL validate-norte: seções faltando são listadas"; echo "$out"; fail=1
+fi
+set +e; "$VALIDATE" "$TMP/nao-existe.md" >/dev/null 2>&1; code=$?; set -e
+if [ "$code" = 2 ]; then echo "ok   validate-norte: arquivo inexistente sai com 2"; else echo "FAIL validate-norte: arquivo inexistente sai com 2 (saiu $code)"; fail=1; fi
+run session-start "$BAD" "$START" | check "session-start avisa quando o NORTE.md está malformado" \
+  "'o NORTE.md tem problemas' in ctx and 'NÃO é' in ctx"
+run session-start "$SPACED" "$START" | check "session-start não avisa quando o NORTE.md está ok" \
+  "'o NORTE.md tem problemas' not in ctx"
+
+# --- Lembrete adaptativo
+run user-prompt-submit "$SPACED" '{"prompt":"adiciona um botão de embaralhar"}' | check "pedido de escopo: lembrete de regras + Foco agora" \
+  "'guarding-the-direction' in ctx and 'Foco agora' in ctx"
+run user-prompt-submit "$SPACED" '{"prompt":"o que essa função faz?"}' | check "pergunta comum: só o Foco agora, sem repetir as regras" \
+  "'guarding-the-direction' not in ctx and 'Foco agora' in ctx"
+printf '# NORTE\n\n## A promessa\nX\n' > "$BAD/NORTE.md"
+run user-prompt-submit "$BAD" '{"prompt":"o que essa função faz?"}' | check "sem Foco agora e pergunta comum: não injeta nada" "d == {}"
+
+# --- Stop hook: "pronto" sem prova
+stop_case() { # nome, esperado (block|allow), stdin extra (json), linhas do transcript...
+  local name="$1" want="$2" extra="$3"; shift 3
+  local tr="$TMP/transcript-$RANDOM.jsonl"
+  printf '%s\n' "$@" > "$tr"
+  local got
+  got="$(printf '{"hook_event_name":"Stop","transcript_path":"%s"%s}' "$tr" "$extra" | "$ROOT/hooks/stop")"
+  if { [ "$want" = block ] && echo "$got" | grep -q '"decision": "block"'; } || { [ "$want" = allow ] && [ "$got" = "{}" ]; }; then
+    echo "ok   stop: $name"
+  else
+    echo "FAIL stop: $name (esperado $want, veio: $got)"; fail=1
+  fi
+}
+U='{"type":"user","message":{"role":"user","content":"muda o botão"}}'
+EDIT='{"type":"assistant","message":{"content":[{"type":"tool_use","name":"Edit","input":{"file_path":"/p/index.html"}}]}}'
+EDITMD='{"type":"assistant","message":{"content":[{"type":"tool_use","name":"Edit","input":{"file_path":"/p/NORTE.md"}}]}}'
+RES='{"type":"user","message":{"content":[{"type":"tool_result","content":"ok"}]}}'
+READ='{"type":"assistant","message":{"content":[{"type":"tool_use","name":"Read","input":{"file_path":"/p/index.html"}}]}}'
+BASH='{"type":"assistant","message":{"content":[{"type":"tool_use","name":"Bash","input":{"command":"npm test"}}]}}'
+VSKILL='{"type":"assistant","message":{"content":[{"type":"tool_use","name":"Skill","input":{"skill":"onedirection:verifying-before-done"}}]}}'
+DONE='{"type":"assistant","message":{"content":[{"type":"text","text":"Pronto, mudei o botão."}]}}'
+HONEST='{"type":"assistant","message":{"content":[{"type":"text","text":"Pronto. Não verifiquei no navegador porque não tenho acesso."}]}}'
+ASK='{"type":"assistant","message":{"content":[{"type":"text","text":"Mudei metade. Qual cor você prefere?"}]}}'
+stop_case "edição + 'pronto' sem conferir: bloqueia" block "" "$U" "$EDIT" "$RES" "$DONE"
+stop_case "edição + Bash depois + 'pronto': passa" allow "" "$U" "$EDIT" "$RES" "$BASH" "$RES" "$DONE"
+stop_case "edição + releitura depois + 'pronto': passa" allow "" "$U" "$EDIT" "$RES" "$READ" "$RES" "$DONE"
+stop_case "edição + skill verifying depois + 'pronto': passa" allow "" "$U" "$EDIT" "$RES" "$VSKILL" "$RES" "$DONE"
+stop_case "releitura só ANTES da edição: bloqueia" block "" "$U" "$READ" "$RES" "$EDIT" "$RES" "$DONE"
+stop_case "'pronto' + 'não verifiquei': passa" allow "" "$U" "$EDIT" "$RES" "$HONEST"
+stop_case "edição sem afirmar conclusão: passa" allow "" "$U" "$EDIT" "$RES" "$ASK"
+stop_case "só Markdown editado: passa" allow "" "$U" "$EDITMD" "$RES" "$DONE"
+stop_case "edição em turno ANTERIOR não conta: passa" allow "" "$U" "$EDIT" "$RES" "$DONE" "$U" "$DONE"
+stop_case "stop_hook_active (já voltou uma vez): passa" allow ',"stop_hook_active":true' "$U" "$EDIT" "$RES" "$DONE"
+got="$(printf '{"transcript_path":"/nao/existe.jsonl"}' | "$ROOT/hooks/stop")"
+[ "$got" = "{}" ] && echo "ok   stop: transcript inexistente não bloqueia" || { echo "FAIL stop: transcript inexistente não bloqueia ($got)"; fail=1; }
+got="$(printf 'isso não é json' | "$ROOT/hooks/stop")"
+[ "$got" = "{}" ] && echo "ok   stop: entrada inválida não bloqueia" || { echo "FAIL stop: entrada inválida não bloqueia ($got)"; fail=1; }
+
 # --- Toda skill tem frontmatter com name igual à pasta e description
 for dir in "$ROOT"/skills/*/; do
   name="$(basename "$dir")"
