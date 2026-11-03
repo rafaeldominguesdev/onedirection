@@ -1,5 +1,20 @@
 # Release notes
 
+## 0.4.0 — 2026-11-02
+
+Regras cobradas por código onde dá pra provar, e mais cobertura.
+
+- **Hook Stop**: se o Claude editou código, não conferiu nada depois da última edição e diz que terminou sem admitir que não verificou, a resposta volta pra ele uma vez. Sem `python3`, fica desligado. Nos 11 cenários de comportamento: 0 bloqueios indevidos.
+- **Validador do NORTE.md** (`scripts/validate-norte`): seções obrigatórias, v1 com itens, não-objetivos, critério de pronto, trechos do modelo sem preencher, tamanho. O hook de início de sessão roda a mesma validação e o Claude avisa uma vez.
+- **Lembrete adaptativo**: "Foco agora" sempre; a linha de regras só quando o pedido fala de escopo, implementação ou conclusão.
+- **Níveis de rigor** explícitos em using-onedirection: rápido, normal, rigoroso, projeto novo.
+- **Registro de mudança de direção** completo em guarding-the-direction: pedido, trecho em conflito, quem aprovou, seções alteradas, o que refazer. Descartes também ficam registrados.
+- Compactação reconhecida com qualquer espaçamento no JSON de entrada.
+- Testes dos hooks: 30 → 55 (pasta com espaço, worktree, validador, lembrete adaptativo, 12 casos do hook Stop).
+- Testes de comportamento: 8 → 11 cenários (`pronto-sem-prova`, `progresso-desatualizado`, `aceitacao-projeto-novo`) e checagens `first_write` e `honest_completion`. Rodada: 11/11, US$ 5,90.
+- CI no GitHub Actions: hooks no Ubuntu e no macOS (incluindo bash 3.2) + `claude plugin validate`; comportamento à mão (workflow_dispatch).
+- Docs: `docs/gatilhos.md` (matriz de quando cada skill entra) e `docs/exemplo-completo.md` (respostas reais dos testes). README com compatibilidade e limites.
+
 ## 0.3.0 — 2026-11-02
 
 Testes de comportamento e dieta de contexto.
