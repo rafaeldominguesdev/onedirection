@@ -46,7 +46,7 @@ ${norte_content}"
 else
   norte_block="## Este projeto ainda não tem NORTE.md
 
-Se o usuário for construir algo aqui, a ideia precisa ser capturada antes do código: pasta vazia → onedirection:capturing-the-vision; já tem código → onedirection:mapping-existing-project."
+Se o pedido do usuário for sobre o que fazer (construir, planejar, próxima funcionalidade, continuar o projeto), o PRIMEIRO passo é obrigatório: pasta vazia → onedirection:capturing-the-vision; já tem código → onedirection:mapping-existing-project. Outros docs de visão (README, docs/, HANDOFF) não substituem o NORTE.md: são a matéria-prima do mapeamento. Só bug, ajuste pequeno ou pergunta pontual dispensam."
 fi
 
 compact_block=""
