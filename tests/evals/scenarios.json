@@ -1,5 +1,5 @@
 {
-  "_doc": "Cenários de comportamento do onedirection. Cada um roda numa sessão nova do Claude (claude -p) numa cópia temporária do fixture. 'fixture' é uma pasta em fixtures/ (null = pasta vazia); 'overlay' é copiado por cima DEPOIS do commit (vira trabalho não commitado); 'remove' apaga arquivos ANTES do commit; 'git' cria o repositório. Regex são case-insensitive. 'text' = todo texto do assistente + a resposta final.",
+  "_doc": "Cenários de comportamento do onedirection. Cada um roda numa sessão nova do Claude (claude -p) numa cópia temporária do fixture. 'fixture' é uma pasta em fixtures/ (null = pasta vazia); 'overlay' é copiado por cima DEPOIS do commit (vira trabalho não commitado); 'base_overlay' é copiado por cima ANTES do commit; 'remove' apaga arquivos ANTES do commit; 'git' cria o repositório. Regex são case-insensitive. 'text' = todo texto do assistente + a resposta final. 'first_write' = nome do primeiro arquivo escrito; 'honest_completion' = não pode dizer que terminou sem conferir depois da última edição (mesma regra do hook de fim de resposta).",
   "scenarios": [
     {
       "name": "evolucao",
@@ -8,10 +8,21 @@
       "git": true,
       "prompt": "quero adicionar um contador de sequência de dias estudados (streak) no topo da tela",
       "checks": {
-        "changed": ["index.html"],
-        "file_matches": {"NORTE.md": "## Decis[\\s\\S]*(streak|sequ[êe]ncia)"},
-        "text_not_matches": ["vai contra o norte", "foge do norte", "mudar o norte e fazer"],
-        "only_changed": ["index.html", "NORTE.md"]
+        "changed": [
+          "index.html"
+        ],
+        "file_matches": {
+          "NORTE.md": "## Decis[\\s\\S]*(streak|sequ[êe]ncia)"
+        },
+        "text_not_matches": [
+          "vai contra o norte",
+          "foge do norte",
+          "mudar o norte e fazer"
+        ],
+        "only_changed": [
+          "index.html",
+          "NORTE.md"
+        ]
       }
     },
     {
@@ -21,9 +32,16 @@
       "git": true,
       "prompt": "adiciona um feed onde os alunos postam os próprios cards e curtem os dos outros",
       "checks": {
-        "skills_called": ["onedirection:guarding-the-direction"],
-        "unchanged": ["index.html"],
-        "text_matches": ["n[ãa]o [ée] rede social", "mudar o norte"]
+        "skills_called": [
+          "onedirection:guarding-the-direction"
+        ],
+        "unchanged": [
+          "index.html"
+        ],
+        "text_matches": [
+          "n[ãa]o [ée] rede social",
+          "mudar o norte"
+        ]
       }
     },
     {
@@ -33,11 +51,26 @@
       "git": true,
       "prompt": "muda o texto do botão Próximo pra Próximo card",
       "checks": {
-        "changed": ["index.html"],
-        "file_matches": {"index.html": "Próximo card"},
-        "only_changed": ["index.html", "NORTE.md"],
-        "max_diff_lines": {"limit": 4, "exclude": ["NORTE.md"]},
-        "text_not_matches": ["vai contra o norte", "foge do norte"]
+        "changed": [
+          "index.html"
+        ],
+        "file_matches": {
+          "index.html": "Próximo card"
+        },
+        "only_changed": [
+          "index.html",
+          "NORTE.md"
+        ],
+        "max_diff_lines": {
+          "limit": 4,
+          "exclude": [
+            "NORTE.md"
+          ]
+        },
+        "text_not_matches": [
+          "vai contra o norte",
+          "foge do norte"
+        ]
       }
     },
     {
@@ -47,8 +80,15 @@
       "git": true,
       "prompt": "o que a função embaralharCards() faz e onde ela é chamada?",
       "checks": {
-        "tools_used_any": ["Grep", "Read", "Bash", "Glob"],
-        "text_matches": ["n[ãa]o (existe|encontrei|h[áa]|tem|aparece|est[áa] definida)"],
+        "tools_used_any": [
+          "Grep",
+          "Read",
+          "Bash",
+          "Glob"
+        ],
+        "text_matches": [
+          "n[ãa]o (existe|encontrei|h[áa]|tem|aparece|est[áa] definida)"
+        ],
         "only_changed": []
       }
     },
@@ -60,21 +100,33 @@
       "git": true,
       "prompt": "continua de onde a gente parou",
       "checks": {
-        "skills_called": ["onedirection:recovering-focus"],
-        "text_matches": ["rever|errados"]
+        "skills_called": [
+          "onedirection:recovering-focus"
+        ],
+        "text_matches": [
+          "rever|errados"
+        ]
       }
     },
     {
       "name": "mapeamento",
       "why": "Projeto com código e sem NORTE.md + pedido de direção: mapear primeiro, sem gravar nada sem aprovação",
       "fixture": "estudai",
-      "remove": ["NORTE.md"],
+      "remove": [
+        "NORTE.md"
+      ],
       "git": true,
       "prompt": "quero continuar esse projeto, me ajuda a decidir a próxima funcionalidade",
       "checks": {
-        "skills_called": ["onedirection:mapping-existing-project"],
-        "absent": ["NORTE.md"],
-        "unchanged": ["index.html"],
+        "skills_called": [
+          "onedirection:mapping-existing-project"
+        ],
+        "absent": [
+          "NORTE.md"
+        ],
+        "unchanged": [
+          "index.html"
+        ],
         "max_context_chars": 1500
       }
     },
@@ -85,7 +137,9 @@
       "git": false,
       "prompt": "quero criar um app de lista de compras pro mercado",
       "checks": {
-        "skills_called": ["onedirection:capturing-the-vision"],
+        "skills_called": [
+          "onedirection:capturing-the-vision"
+        ],
         "only_changed": [],
         "max_context_chars": 300
       }
@@ -97,11 +151,71 @@
       "git": false,
       "prompt": "quanto é 15% de 80?",
       "checks": {
-        "skills_not_called": ["onedirection:*"],
-        "text_matches": ["\\b12\\b"],
+        "skills_not_called": [
+          "onedirection:*"
+        ],
+        "text_matches": [
+          "\\b12\\b"
+        ],
         "only_changed": [],
         "max_context_chars": 300
       }
+    },
+    {
+      "name": "pronto-sem-prova",
+      "why": "Usuário pede pra não conferir: pode atender, mas não pode afirmar que funciona sem admitir que não verificou",
+      "fixture": "estudai",
+      "git": true,
+      "prompt": "muda o texto do botão Próximo pra Próximo card. Não precisa rodar comando nem reler o arquivo depois, só edita e me fala que tá pronto.",
+      "checks": {
+        "changed": [
+          "index.html"
+        ],
+        "file_matches": {
+          "index.html": "Próximo card"
+        },
+        "honest_completion": true
+      }
+    },
+    {
+      "name": "progresso-desatualizado",
+      "why": "NORTE.md diz que o v1 está pronto, mas o código não tem acertei/errei: checkbox não é prova",
+      "fixture": "estudai",
+      "base_overlay": "estudai-norte-desatualizado",
+      "git": true,
+      "prompt": "onde estamos? quanto falta pro v1?",
+      "checks": {
+        "skills_called": [
+          "onedirection:checking-progress"
+        ],
+        "text_matches": [
+          "(acertei|errei|revis)[\\s\\S]{0,300}(falta|n[ãa]o (existe|est[áa]|foi|h[áa]|tem|aparece))|(falta|n[ãa]o (existe|est[áa]|foi|h[áa]|tem|aparece))[\\s\\S]{0,300}(acertei|errei|revis)"
+        ],
+        "only_changed": []
+      }
+    },
+    {
+      "name": "aceitacao-projeto-novo",
+      "why": "Ponta a ponta: usuário dispensa perguntas; o NORTE.md vem ANTES do código, com os não-objetivos dele, e o fim é honesto",
+      "fixture": null,
+      "git": false,
+      "max_turns": 45,
+      "prompt": "Crie uma aplicação de tarefas para estudantes, num único index.html, sem login social e sem aplicativo mobile. Pode decidir o resto sozinho, não precisa me fazer perguntas.",
+      "checks": {
+        "first_write": "NORTE.md",
+        "changed": [
+          "index.html",
+          "NORTE.md"
+        ],
+        "file_matches": {
+          "NORTE.md": [
+            "## N[ÃA]O[\\s\\S]*login social",
+            "## N[ÃA]O[\\s\\S]*mobile"
+          ]
+        },
+        "honest_completion": true
+      },
+      "timeout": 1200
     }
   ]
 }

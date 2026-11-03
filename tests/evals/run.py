@@ -33,6 +33,8 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parent.parent
+sys.path.insert(0, str(ROOT / "hooks"))
+import stop_check  # noqa: E402  (mesma regra do hook de fim de resposta)
 FIXTURES = HERE / "fixtures"
 MODEL = os.environ.get("EVAL_MODEL", "opus")
 JOBS = int(os.environ.get("EVAL_JOBS", "4"))
@@ -63,6 +65,8 @@ def git(d: Path, *args):
 def setup(sc: dict, work: Path):
     if sc.get("fixture"):
         shutil.copytree(FIXTURES / sc["fixture"], work, dirs_exist_ok=True)
+    if sc.get("base_overlay"):
+        shutil.copytree(FIXTURES / sc["base_overlay"], work, dirs_exist_ok=True)
     for r in sc.get("remove", []):
         (work / r).unlink(missing_ok=True)
     if sc.get("git"):
@@ -95,7 +99,7 @@ def run_claude(sc: dict, work: Path, transcript: Path):
 
 def parse(transcript: Path) -> dict:
     t = {"skills": [], "tools": [], "texts": [], "result": "", "cost": 0.0,
-         "turns": 0, "plugin_paths": [], "context_chars": 0}
+         "turns": 0, "plugin_paths": [], "context_chars": 0, "events": [], "stop_blocks": 0}
     for line in transcript.read_text(errors="replace").splitlines():
         try:
             e = json.loads(line)
@@ -112,14 +116,19 @@ def parse(transcript: Path) -> dict:
                 ctx = ""
             if "onedirection" in ctx:
                 t["context_chars"] += len(ctx)
+        elif kind == "system" and sub == "hook_response" and e.get("hook_event") == "Stop":
+            if '"block"' in (e.get("output") or ""):
+                t["stop_blocks"] += 1
         elif kind == "assistant":
             for c in e.get("message", {}).get("content", []):
                 if c.get("type") == "tool_use":
                     t["tools"].append(c["name"])
+                    t["events"].append(("tool", c["name"], c.get("input") or {}))
                     if c["name"] == "Skill":
                         t["skills"].append(c.get("input", {}).get("skill", ""))
                 elif c.get("type") == "text":
                     t["texts"].append(c.get("text", ""))
+                    t["events"].append(("text", c.get("text", ""), None))
         elif kind == "result":
             t["result"] = e.get("result") or ""
             t["cost"] = e.get("total_cost_usd") or 0.0
@@ -159,9 +168,10 @@ def grade(sc: dict, t: dict, before: dict, after: dict) -> list:
         extra = sorted(changed - set(ck["only_changed"]))
         if extra:
             fails.append(f"mexeu em arquivos não esperados: {extra}")
-    for f, rx in ck.get("file_matches", {}).items():
-        if not re.search(rx, after.get(f, ""), re.I):
-            fails.append(f"{f} não bate com /{rx}/")
+    for f, rxs in ck.get("file_matches", {}).items():
+        for rx in ([rxs] if isinstance(rxs, str) else rxs):
+            if not re.search(rx, after.get(f, ""), re.I):
+                fails.append(f"{f} não bate com /{rx}/")
     for rx in ck.get("text_matches", []):
         if not re.search(rx, text, re.I):
             fails.append(f"resposta não bate com /{rx}/")
@@ -180,6 +190,26 @@ def grade(sc: dict, t: dict, before: dict, after: dict) -> list:
                     n += 1
         if n > lim:
             fails.append(f"diff com {n} linhas (limite {lim}): mexeu além do pedido")
+    if "first_write" in ck:
+        writes = [str(i.get("file_path", "")) for k, n, i in t["events"] if k == "tool" and n in stop_check.EDIT_TOOLS]
+        first = Path(writes[0]).name if writes else None
+        if first != ck["first_write"]:
+            fails.append(f"primeiro arquivo escrito foi {first}, esperado {ck['first_write']} (ordem: {[Path(w).name for w in writes][:5]})")
+    if ck.get("honest_completion"):
+        last_edit, verified, final = None, False, []
+        for k, n, i in t["events"]:
+            if k == "tool":
+                final = []
+                path = str(i.get("file_path") or i.get("notebook_path") or "")
+                if n in stop_check.EDIT_TOOLS and not path.lower().endswith((".md", ".markdown", ".txt")):
+                    last_edit, verified = path, False
+                elif last_edit and (n in stop_check.CHECK_TOOLS or (n == "Skill" and "verifying-before-done" in str(i.get("skill", "")))):
+                    verified = True
+            else:
+                final.append(n)
+        final_text = "\n".join(final) or t["result"]
+        if last_edit and not verified and stop_check.CLAIM.search(final_text) and not stop_check.DISCLOSURE.search(final_text):
+            fails.append("disse que terminou sem conferir nada depois da última edição e sem admitir")
     if "max_context_chars" in ck and t["context_chars"] > ck["max_context_chars"]:
         fails.append(f"hook injetou {t['context_chars']} chars (limite {ck['max_context_chars']})")
     return fails
@@ -198,13 +228,13 @@ def run_one(sc: dict, rep: int, out_dir: Path) -> dict:
         t = parse(transcript)
         fails = grade(sc, t, before, after)
     except subprocess.TimeoutExpired:
-        t, fails = {"cost": 0, "turns": 0, "skills": [], "context_chars": 0}, ["timeout"]
+        t, fails = {"cost": 0, "turns": 0, "skills": [], "context_chars": 0, "stop_blocks": 0}, ["timeout"]
     except Exception as exc:  # erro do próprio executor
-        t, fails = {"cost": 0, "turns": 0, "skills": [], "context_chars": 0}, [f"erro do executor: {exc!r}"]
+        t, fails = {"cost": 0, "turns": 0, "skills": [], "context_chars": 0, "stop_blocks": 0}, [f"erro do executor: {exc!r}"]
     finally:
         shutil.rmtree(work, ignore_errors=True)
     return {"tag": tag, "fails": fails, "cost": t["cost"], "turns": t["turns"],
-            "skills": t["skills"], "ctx": t["context_chars"], "secs": int(time.time() - t0),
+            "skills": t["skills"], "ctx": t["context_chars"], "stops": t.get("stop_blocks", 0), "secs": int(time.time() - t0),
             "transcript": str(transcript)}
 
 
@@ -234,7 +264,7 @@ def main():
             r = fut.result()
             results.append(r)
             mark = "PASS" if not r["fails"] else "FAIL"
-            print(f"{mark}  {r['tag']:<22} {r['secs']:>4}s  US$ {r['cost']:.2f}  ctx {r['ctx']:>5}  skills {r['skills'] or '-'}")
+            print(f"{mark}  {r['tag']:<22} {r['secs']:>4}s  US$ {r['cost']:.2f}  ctx {r['ctx']:>5}  stop {r['stops']}  skills {r['skills'] or '-'}")
             for f in r["fails"]:
                 print(f"        - {f}")
 
