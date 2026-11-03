@@ -1,61 +1,67 @@
 ---
 name: mapping-existing-project
-description: Use ao entrar num projeto que já tem código mas não tem NORTE.md - lê o projeto inteiro, reconstrói a ideia original, aponta onde já fugiu dela e grava o NORTE.md aprovado
+description: Use ao entrar num projeto que já tem código mas não tem NORTE.md - lê o projeto inteiro, reconstrói a ideia original com evidência, aponta onde já fugiu dela e grava o NORTE.md aprovado
 ---
 
 # Mapear um projeto em andamento
 
-**Anuncie no início:** "Usando onedirection:mapping-existing-project pra entender o projeto antes de mexer."
+O risco aqui é inventar. Um projeto em andamento parece contar uma história, e é fácil preencher as lacunas com o que "faz sentido". Esta skill obriga cada afirmação sobre o projeto a ter fonte.
+
+**Anuncie:** "Usando onedirection:mapping-existing-project pra entender o projeto antes de mexer."
 
 <HARD-GATE>
 Não mude código antes de o NORTE.md existir e o usuário aprovar. Ler pode; editar não.
 </HARD-GATE>
 
-## Checklist
+## A Lei da Evidência
 
-Crie uma tarefa pra cada item:
-
-1. **Ler os documentos**
-2. **Ler a história**
-3. **Ler o código**
-4. **Rascunhar o NORTE.md** com as inferências marcadas
-5. **Apontar os desvios**
-6. **Confirmar com o usuário** e gravar
-
-## 1. Documentos
-
-`README*`, `CLAUDE.md`, `AGENTS.md`, `HANDOFF.md`, `docs/`, qualquer `*.md` de planejamento na raiz. Manifestos: `package.json`, `Cargo.toml`, `pyproject.toml`, `go.mod`, `Package.swift`, `tauri.conf.json`. Nome, descrição e dependências dizem muito.
-
-## 2. História
-
-```bash
-git log --reverse --format='%h %ad %s' --date=short | head -30   # a ideia original mora no começo
-git log --format='%h %ad %s' --date=short -40                    # pra onde o projeto está indo agora
+```
+TODA AFIRMAÇÃO SOBRE O PROJETO TEM FONTE: arquivo:linha, comando com saída, ou fala do usuário.
+SEM FONTE = (?)
 ```
 
-Compare o começo com o agora. A diferença entre os dois é onde a direção pode ter se perdido.
+## Checklist
 
-## 3. Código
+Crie uma tarefa por item:
 
-Estrutura de pastas e pontos de entrada: rotas, telas, comandos, `main`. Projeto grande: despache o agente Explore pra varrer em vez de ler arquivo por arquivo; peça a lista de funcionalidades que existem de verdade.
+1. **Documentos** — `README*`, `CLAUDE.md`, `AGENTS.md`, `HANDOFF.md`, `docs/`, `*.md` de planejamento. Manifestos: `package.json`, `Cargo.toml`, `pyproject.toml`, `go.mod`, `Package.swift`, `tauri.conf.json`.
+2. **História** — o começo e o agora:
+   ```bash
+   git log --reverse --format='%h %ad %s' --date=short | head -30   # a ideia original mora no começo
+   git log --format='%h %ad %s' --date=short -40                    # pra onde está indo
+   git status --short                                               # trabalho pela metade
+   ```
+3. **Código** — estrutura, pontos de entrada (rotas, telas, comandos, `main`). Projeto grande: despache o agente Explore pedindo **a lista de funcionalidades que existem de verdade, com arquivo de cada uma**.
+4. **Verificar o que funciona** — se for barato, rode build/testes. Um item só conta como feito se você viu funcionar ou viu o código completo dele.
+5. **Rascunho do NORTE.md** com `../capturing-the-vision/norte-template.md`.
+6. **Desvios** — liste.
+7. **Confirmar** com o usuário e gravar.
 
-## 4. Rascunho
+## Regras do rascunho
 
-Use `../capturing-the-vision/norte-template.md`. Regras:
+- Promessa, público e não-objetivos quase nunca estão no código. Se não estiverem escritos em algum doc, são `(?)` — pergunte, não deduza.
+- "v1 obrigatório": `[x]` só pro que você verificou no passo 4. README prometendo não é evidência.
+- Ao lado de cada item, a fonte entre parênteses na versão que você mostra ao usuário: `- [x] login com e-mail (src/auth/login.ts:12)`. Na versão gravada, pode tirar.
+- "Foco agora": se `git status` mostra trabalho pela metade, é isso. Senão, `(?)`.
 
-- Só escreva o que **está no código ou nos docs**.
-- Marque com `(?)` tudo que foi inferido.
-- Em "v1 obrigatório", marque `[x]` o que o código mostra que funciona, não o que o README promete.
-- Em "Estado", diga onde o projeto realmente está.
+## Desvios
 
-## 5. Desvios
-
-Liste em tópicos curtos:
-- Funcionalidades órfãs (existem mas não servem à promessa).
-- Coisas pela metade.
+Tópicos curtos, cada um com fonte:
+- Funcionalidade órfã (existe mas não serve à promessa).
+- Coisa pela metade.
 - Duas direções brigando no mesmo código.
-- Promessas do README que o código não cumpre.
+- Promessa do README que o código não cumpre.
 
-## 6. Confirmar
+## Confirmar
 
-Mostre ao usuário: "Entendi que a ideia é esta. Confere?" Pergunte só o que está marcado com `(?)`, uma dúvida por vez. Grave o NORTE.md aprovado na raiz, sem as marcas `(?)`.
+"Entendi que a ideia é esta. Confere?" Pergunte só o que está `(?)`, uma dúvida por mensagem, a mais importante primeiro. Grave o NORTE.md aprovado na raiz, sem as marcas.
+
+## Sinais de alerta
+
+| Pensamento | Realidade |
+|---|---|
+| "O nome do projeto deixa claro o objetivo" | Nome não é promessa. `(?)` e pergunte. |
+| "Essa pasta deve ser a parte de pagamentos" | "Deve ser" = você não abriu. Abra. |
+| "O README diz que tem, então tem" | README envelhece. Verifique no código. |
+| "Li os arquivos principais, já entendi" | Entendeu o que leu. O resto é `(?)`. |
+| "Vou perguntar qual é a stack" | O manifesto responde. Nunca pergunte o que o código responde. |
