@@ -1,6 +1,6 @@
 {
-  "name": "onedirection-dev",
-  "description": "Marketplace de desenvolvimento do plugin onedirection",
+  "name": "onedirection",
+  "description": "Marketplace do plugin onedirection",
   "owner": {
     "name": "Rafael Domingues"
   },

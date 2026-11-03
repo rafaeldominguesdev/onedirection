@@ -19,7 +19,7 @@ Dentro do Claude Code:
 
 ```
 /plugin marketplace add rafaeldominguesdev/onedirection
-/plugin install onedirection@onedirection-dev
+/plugin install onedirection@onedirection
 ```
 
 Reinicie o Claude depois de instalar.
