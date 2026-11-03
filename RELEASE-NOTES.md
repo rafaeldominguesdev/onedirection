@@ -1,5 +1,18 @@
 # Release notes
 
+## 0.3.0 — 2026-11-02
+
+Testes de comportamento e dieta de contexto.
+
+- **Testes de comportamento** (`tests/evals/`): 8 cenários rodados em sessões reais do Claude (`claude -p`), com a versão local do plugin e correção automática do transcript e dos arquivos. Cobrem evolução, conflito, pedido pequeno (com isca de refatoração), alucinação, retomada, mapeamento, projeto novo e fora de projeto. Primeira rodada: 8/8; projeto-novo e mapeamento repetidos 3x: 6/6. Custo da rodada completa: ~US$ 2.
+- **Injeção em três níveis** no SessionStart:
+  - fora de projeto (sem git, sem manifesto, ou a pasta pessoal): 6.138 → 148 caracteres;
+  - projeto sem NORTE.md: 6.138 → 913 caracteres (regras essenciais; a skill completa segue disponível);
+  - com NORTE.md: igual (skill inteira + arquivo).
+- NORTE.md achado na raiz do git quando o Claude é aberto numa subpasta.
+- Repositório git na pasta pessoal (dotfiles) não conta como projeto.
+- `hooks/lib.sh` com a lógica compartilhada pelos dois hooks.
+
 ## 0.2.2 — 2026-11-02
 
 - guarding-the-direction separa **evolução** (ideia nova do usuário que serve à promessa: segue sem cerimônia e é registrada em Decisões), **troca de foco** (só pergunta se há trabalho pela metade) e **conflito** (bate em trecho citável do NORTE.md: para com as 3 opções). Regra: não estar no NORTE.md ≠ ir contra o NORTE.md.
