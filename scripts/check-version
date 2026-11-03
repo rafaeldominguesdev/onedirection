@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+# Confere que a versão é a mesma em plugin.json, marketplace.json e no topo do RELEASE-NOTES.md.
+set -euo pipefail
+case "$0" in */*) ROOT="$(cd "${0%/*}/.." && pwd)" ;; *) ROOT="$(cd .. && pwd)" ;; esac
+python3 - "$ROOT" <<'PY'
+import json, re, sys
+from pathlib import Path
+root = Path(sys.argv[1])
+plugin = json.loads((root / ".claude-plugin/plugin.json").read_text())["version"]
+market = {p["name"]: p.get("version") for p in json.loads((root / ".claude-plugin/marketplace.json").read_text())["plugins"]}
+m = re.search(r"^## (\d+\.\d+\.\d+)", (root / "RELEASE-NOTES.md").read_text(), re.M)
+notes = m.group(1) if m else None
+found = {"plugin.json": plugin, "marketplace.json": market.get("onedirection"), "RELEASE-NOTES.md": notes}
+if len(set(found.values())) != 1:
+    print("versões diferentes:", ", ".join(f"{k}={v}" for k, v in found.items()))
+    sys.exit(1)
+print(f"versão {plugin}: igual nos três lugares")
+PY
