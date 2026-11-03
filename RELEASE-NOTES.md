@@ -1,5 +1,9 @@
 # Release notes
 
+## 0.2.1 — 2026-11-02
+
+- Sem NORTE.md, pedido de direção (próxima funcionalidade, planejar, continuar) passa obrigatoriamente por mapping-existing-project / capturing-the-vision. Outro doc de visão não substitui o NORTE.md. Achado no teste real no Aprova, em que o agente tratou o mapeamento como opcional por existir `docs/objetivo.md`.
+
 ## 0.2.0 — 2026-11-02
 
 Foco em não alucinar e não perder o foco.
