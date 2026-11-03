@@ -39,6 +39,14 @@ Vale pra nomes de função, caminhos de arquivo, o que está pronto, o que o usu
 
 Pedido pequeno e óbvio (bug, ajuste visual, pergunta sobre o código) que cabe no NORTE.md e no "Foco agora": faça direto. Mas `verifying-before-done` vale pra tudo — inclusive pro pequeno.
 
+### Sem NORTE.md, qualquer pedido de direção passa pelo mapeamento
+
+Num projeto sem NORTE.md, se o pedido é sobre **o que fazer** — próxima funcionalidade, planejar, priorizar, construir algo novo, "me ajuda a continuar" —, o primeiro passo é `mapping-existing-project` (tem código) ou `capturing-the-vision` (não tem). Não é opcional e não é oferta pro final da resposta.
+
+Outro documento de visão (README, `docs/objetivo.md`, PRD, HANDOFF, memória) **não substitui** o NORTE.md: ele é a matéria-prima do mapeamento. O NORTE.md existe porque é curto, tem não-objetivos e "Foco agora", e é injetado em toda sessão — o resto não.
+
+Só bug, ajuste pequeno ou pergunta pontual dispensam o mapeamento. Nesses casos, faça e ofereça o mapeamento em uma linha, uma vez.
+
 ## Prioridade entre skills
 
 O onedirection define **o que o projeto é**. Outras skills de processo definem **como fazer uma parte dele**. Então onedirection vem primeiro.
@@ -56,6 +64,8 @@ Estes pensamentos significam PARE, você está racionalizando:
 | "O usuário pediu, então está dentro" | Ele pode ter esquecido o próprio norte. Seu trabalho é lembrar. |
 | "Depois eu atualizo o NORTE.md" | Mudança de direção é registrada antes de codar. |
 | "Já sei qual é a ideia do projeto" | Você sabe o que está no NORTE.md. O resto é chute. |
+| "O projeto já tem um doc de visão, o NORTE.md é opcional" | O doc é a matéria-prima. Use `mapping-existing-project` com ele. |
+| "Vou responder primeiro e oferecer o NORTE.md no final" | Pedido de direção sem norte = mapeamento primeiro. |
 | "Lembro que o arquivo se chama X" | Lembrar não é fonte. Abra. |
 | "Deve estar funcionando" | "Deve" é a palavra de quem não rodou. Rode. |
 | "Vou continuar de onde parei" (depois de compactar) | Você não sabe onde parou. `recovering-focus`. |
