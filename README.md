@@ -13,14 +13,18 @@ A ideia fica escrita num `NORTE.md` na raiz do projeto. Um hook coloca esse arqu
 
 `using-onedirection` é a porta de entrada: o hook a injeta em toda sessão e ela decide qual skill usar.
 
-## Instalação (local)
+## Instalação
 
-```bash
-claude plugin marketplace add ~/onedirection
-claude plugin install onedirection@onedirection-dev
+Dentro do Claude Code:
+
+```
+/plugin marketplace add rafaeldominguesdev/onedirection
+/plugin install onedirection@onedirection-dev
 ```
 
-Ou, dentro do Claude Code: `/plugin marketplace add ~/onedirection` e `/plugin install onedirection@onedirection-dev`.
+Reinicie o Claude depois de instalar.
+
+Pra desenvolver localmente: `claude plugin marketplace add ~/onedirection`.
 
 ## Uso
 
