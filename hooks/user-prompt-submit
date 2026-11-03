@@ -45,7 +45,7 @@ shopt -u nocasematch
 
 msg=""
 if [ "$scope" = 1 ]; then
-  msg="[onedirection] Ideia nova que serve à promessa: siga. Conflito com trecho do NORTE.md: onedirection:guarding-the-direction. Antes de dizer pronto: onedirection:verifying-before-done. Fato sobre o projeto só com fonte."
+  msg="[onedirection] Ideia nova que serve à promessa: faça e registre em 1 linha em \"Decisões\" do NORTE.md (AAAA-MM-DD — entra <ideia> — pedido do usuário). Conflito com trecho do NORTE.md: onedirection:guarding-the-direction. Antes de dizer pronto: onedirection:verifying-before-done. Fato sobre o projeto só com fonte."
 fi
 if [ -n "$foco" ]; then
   [ -n "$msg" ] && msg="${msg}
