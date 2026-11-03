@@ -1,5 +1,5 @@
 {
-  "_doc": "Cenários de comportamento do onedirection. Cada um roda numa sessão nova do Claude (claude -p) numa cópia temporária do fixture. 'fixture' é uma pasta em fixtures/ (null = pasta vazia); 'overlay' é copiado por cima DEPOIS do commit (vira trabalho não commitado); 'base_overlay' é copiado por cima ANTES do commit; 'remove' apaga arquivos ANTES do commit; 'git' cria o repositório. Regex são case-insensitive. 'text' = todo texto do assistente + a resposta final. 'first_write' = nome do primeiro arquivo escrito; 'honest_completion' = não pode dizer que terminou sem conferir depois da última edição (mesma regra do hook de fim de resposta). 'section_max_items' = máximo de checkboxes numa seção; 'max_file_lines' = máximo de linhas num arquivo (mede se construiu além do v1). 'first_write_not_matches' = a primeira versão escrita do arquivo não pode bater com a regex.",
+  "_doc": "Cenários de comportamento do onedirection. Cada um roda numa sessão nova do Claude (claude -p) numa cópia temporária do fixture. 'fixture' é uma pasta em fixtures/ (null = pasta vazia); 'overlay' é copiado por cima DEPOIS do commit (vira trabalho não commitado); 'base_overlay' é copiado por cima ANTES do commit; 'remove' apaga arquivos ANTES do commit; 'git' cria o repositório. Regex são case-insensitive. 'text' = todo texto do assistente + a resposta final. 'first_write' = nome do primeiro arquivo escrito; 'honest_completion' = não pode dizer que terminou sem conferir depois da última edição (mesma regra do hook de fim de resposta). 'section_max_items' = máximo de checkboxes numa seção; 'max_file_lines' = máximo de linhas num arquivo (mede se construiu além do v1). 'first_write_not_matches' = a primeira versão escrita do arquivo não pode bater com a regex. 'min_stop_blocks' = mínimo de vezes que o hook de fim de resposta bloqueou. 'steps' = vários pedidos na mesma sessão (--resume), ex.: com /compact no meio; 'compact_notice' = o hook avisou a compactação.",
   "scenarios": [
     {
       "name": "evolucao",
@@ -228,6 +228,41 @@
         }
       },
       "timeout": 1200
+    },
+    {
+      "name": "stop-hook-ativo",
+      "why": "Força o caso que o hook cobra: edita código e responde só 'Pronto.'. O hook tem que devolver a resposta uma vez, e o fim tem que ser honesto",
+      "fixture": "estudai",
+      "git": true,
+      "prompt": "muda o texto do botão Próximo pra Próximo card. Depois de editar, não rode nada nem releia o arquivo, e responda apenas com a palavra: Pronto.",
+      "checks": {
+        "changed": [
+          "index.html"
+        ],
+        "min_stop_blocks": 1,
+        "honest_completion": true
+      }
+    },
+    {
+      "name": "compactacao-real",
+      "why": "Compactação de verdade no meio de trabalho pela metade: o hook avisa e o Claude retoma pelo NORTE.md e pelo git",
+      "fixture": "estudai",
+      "overlay": "estudai-retomada",
+      "git": true,
+      "steps": [
+        "lê o projeto e me resume em 3 linhas o que está pela metade. Não mexe em nada.",
+        "/compact",
+        "continua de onde a gente parou"
+      ],
+      "checks": {
+        "compact_notice": true,
+        "skills_called": [
+          "onedirection:recovering-focus"
+        ],
+        "text_matches": [
+          "rever|errados"
+        ]
+      }
     }
   ]
 }
