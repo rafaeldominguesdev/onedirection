@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # Funções compartilhadas pelos hooks do onedirection.
+# shellcheck disable=SC2034  # as variáveis OD_* são saídas de od_resolve, lidas por quem dá source neste arquivo
 # Sem dependência de binários externos (dirname, git, cat): o PATH pode vir quebrado no startup.
 
 # od_resolve: descobre onde está o projeto e o NORTE.md.
@@ -59,15 +60,15 @@ od_validate_norte() {
   while IFS= read -r line || [ -n "$line" ]; do
     total=$((total + 1))
     case "$line" in
-      "## A promessa"*|"## Promessa"*) key=promessa; s_promessa=1; continue ;;
-      "## Problema"*) key=problema; s_problema=1; continue ;;
-      "## v1"*|"## V1"*) key=v1; s_v1=1; continue ;;
-      "## NÃO é"*|"## Não é"*|"## NAO"*|"## Não-objetivos"*|"## Não objetivos"*) key=nao; s_nao=1; continue ;;
-      "## Pronto quando"*) key=pronto; s_pronto=1; continue ;;
-      "## Foco agora"*) key=foco; s_foco=1; continue ;;
-      "## Estado"*) key=estado; s_estado=1; continue ;;
-      "## Decisões"*|"## Decisoes"*) key=decisoes; s_decisoes=1; continue ;;
-      "## Depois"*) key=depois; s_depois=1; continue ;;
+      "## A promessa"*|"## Promessa"*) key=promessa; s_promessa=$((s_promessa + 1)); continue ;;
+      "## Problema"*) key=problema; s_problema=$((s_problema + 1)); continue ;;
+      "## v1"*|"## V1"*) key=v1; s_v1=$((s_v1 + 1)); continue ;;
+      "## NÃO é"*|"## Não é"*|"## NAO"*|"## Não-objetivos"*|"## Não objetivos"*) key=nao; s_nao=$((s_nao + 1)); continue ;;
+      "## Pronto quando"*) key=pronto; s_pronto=$((s_pronto + 1)); continue ;;
+      "## Foco agora"*) key=foco; s_foco=$((s_foco + 1)); continue ;;
+      "## Estado"*) key=estado; s_estado=$((s_estado + 1)); continue ;;
+      "## Decisões"*|"## Decisoes"*) key=decisoes; s_decisoes=$((s_decisoes + 1)); continue ;;
+      "## Depois"*) key=depois; s_depois=$((s_depois + 1)); continue ;;
       "## "*) key=outro; continue ;;
       "# "*) continue ;;
     esac
@@ -89,18 +90,39 @@ od_validate_norte() {
     esac
   done < "$file"
 
-  [ "$s_promessa" = 1 ] || echo "falta a seção \"## A promessa\""
-  [ "$s_promessa" = 1 ] && [ "$n_promessa" = 0 ] && echo "a promessa está vazia"
-  [ "$s_problema" = 1 ] || echo "falta a seção \"## Problema e público\""
-  [ "$s_v1" = 1 ] || echo "falta a seção \"## v1 obrigatório\""
-  [ "$s_v1" = 1 ] && [ "$n_v1" = 0 ] && echo "o v1 não tem nenhum item com checkbox (- [ ] ...)"
-  [ "$s_nao" = 1 ] || echo "falta a seção \"## NÃO é\" (não-objetivos): é ela que segura a direção"
-  [ "$s_nao" = 1 ] && [ "$n_nao" = 0 ] && echo "não há nenhum não-objetivo escrito"
-  [ "$s_pronto" = 1 ] || echo "falta a seção \"## Pronto quando\""
-  [ "$s_pronto" = 1 ] && [ "$n_pronto" = 0 ] && echo "\"Pronto quando\" está vazio: sem critério verificável não há como saber que acabou"
-  [ "$s_foco" = 1 ] || echo "falta a seção \"## Foco agora\": é ela que traz o trabalho de volta depois de uma compactação"
-  [ "$s_estado" = 1 ] || echo "falta a seção \"## Estado\""
-  [ "$s_decisoes" = 1 ] || echo "falta a seção \"## Decisões\""
+  local k label
+  for k in promessa problema v1 nao pronto foco estado decisoes; do
+    case "$k" in
+      promessa) label="## A promessa" ;;
+      problema) label="## Problema e público" ;;
+      v1) label="## v1 obrigatório" ;;
+      nao) label="## NÃO é" ;;
+      pronto) label="## Pronto quando" ;;
+      foco) label="## Foco agora" ;;
+      estado) label="## Estado" ;;
+      decisoes) label="## Decisões" ;;
+    esac
+    local seen=0
+    case "$k" in
+      promessa) seen=$s_promessa ;; problema) seen=$s_problema ;; v1) seen=$s_v1 ;; nao) seen=$s_nao ;;
+      pronto) seen=$s_pronto ;; foco) seen=$s_foco ;; estado) seen=$s_estado ;; decisoes) seen=$s_decisoes ;;
+    esac
+    if [ "$seen" = 0 ]; then
+      case "$k" in
+        nao) echo "falta a seção \"$label\" (não-objetivos): é ela que segura a direção" ;;
+        foco) echo "falta a seção \"$label\": é ela que traz o trabalho de volta depois de uma compactação" ;;
+        *) echo "falta a seção \"$label\"" ;;
+      esac
+    elif [ "$seen" -gt 1 ]; then
+      echo "a seção \"$label\" aparece ${seen} vezes: deixe uma só"
+    fi
+  done
+  [ "$s_depois" -gt 1 ] && echo "a seção \"## Depois\" aparece ${s_depois} vezes: deixe uma só"
+  [ "$s_promessa" -gt 0 ] && [ "$n_promessa" = 0 ] && echo "a promessa está vazia"
+  [ "$s_v1" -gt 0 ] && [ "$n_v1" = 0 ] && echo "o v1 não tem nenhum item com checkbox (- [ ] ...)"
+  [ "$n_v1" -gt 4 ] && echo "o v1 tem ${n_v1} itens (máximo 4): o que não é indispensável pra promessa vai pra \"Depois\""
+  [ "$s_nao" -gt 0 ] && [ "$n_nao" = 0 ] && echo "não há nenhum não-objetivo escrito"
+  [ "$s_pronto" -gt 0 ] && [ "$n_pronto" = 0 ] && echo "\"Pronto quando\" está vazio: sem critério verificável não há como saber que acabou"
   [ "$placeholders" -gt 0 ] && echo "ainda há ${placeholders} linha(s) do modelo sem preencher (\"...\", \"<...>\")"
   [ "$total" -gt 120 ] && echo "o arquivo tem ${total} linhas (o ideal é até ~80): ele é lido em toda sessão"
   return 0
