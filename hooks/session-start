@@ -1,52 +1,34 @@
 #!/usr/bin/env bash
 # SessionStart hook do plugin onedirection.
-# Injeta a skill using-onedirection e, se existir, o NORTE.md do projeto.
-# Roda em startup, clear e compact. Na compactação, manda retomar com recovering-focus.
+# Roda em startup, clear e compact. Injeta só o necessário, em três níveis:
+#   com NORTE.md      -> skill using-onedirection inteira + NORTE.md
+#   projeto sem NORTE -> regras essenciais em poucas linhas (a skill completa fica disponível via Skill)
+#   fora de projeto   -> uma linha
+# Na compactação (em projeto), manda retomar com recovering-focus.
 
 set -euo pipefail
 
-# Mesma resolução de caminho da superpowers: sem dirname, porque o PATH pode vir quebrado no startup.
+# Mesma resolução de caminho da superpowers: sem dirname.
 case "$0" in
   */*) SCRIPT_DIR="$(cd "${0%/*}" && pwd)" ;;
   *) SCRIPT_DIR="$(pwd)" ;;
 esac
 PLUGIN_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
-PROJECT_DIR="${CLAUDE_PROJECT_DIR:-$PWD}"
+# shellcheck source=lib.sh
+. "${SCRIPT_DIR}/lib.sh"
 
-# Lê o stdin do hook sem depender de cat (traz "source": startup|clear|compact).
-input=""
-while IFS= read -r line 2>/dev/null || [ -n "$line" ]; do input="${input}${line}"; done || :
+input="$(od_read_stdin)"
 source_kind="startup"
 case "$input" in
   *'"source":"compact"'*|*'"source": "compact"'*) source_kind="compact" ;;
 esac
 
-skill_md="${PLUGIN_ROOT}/skills/using-onedirection/SKILL.md"
-if [ -r "$skill_md" ]; then
-  skill_content="$(<"$skill_md")"
-else
-  skill_content="Erro ao ler a skill using-onedirection"
-fi
+od_resolve
 
-norte_md="${PROJECT_DIR}/NORTE.md"
-if [ -r "$norte_md" ]; then
-  norte_content="$(<"$norte_md")"
-  norte_block="## NORTE.md deste projeto (${PROJECT_DIR})
-
-Esta é a ideia original. Ela manda no escopo.
-
-${norte_content}"
-  lines=0
-  while IFS= read -r _; do lines=$((lines + 1)); done <<< "$norte_content"
-  if [ "$lines" -gt 120 ]; then
-    norte_block="${norte_block}
-
-> Aviso do onedirection: o NORTE.md tem ${lines} linhas (o ideal é até ~80). Sugira ao usuário enxugar: ele é lido em toda sessão."
-  fi
-else
-  norte_block="## Este projeto ainda não tem NORTE.md
-
-Se o pedido do usuário for sobre o que fazer (construir, planejar, próxima funcionalidade, continuar o projeto), o PRIMEIRO passo é obrigatório: pasta vazia → onedirection:capturing-the-vision; já tem código → onedirection:mapping-existing-project. Outros docs de visão (README, docs/, HANDOFF) não substituem o NORTE.md: são a matéria-prima do mapeamento. Só bug, ajuste pequeno ou pergunta pontual dispensam."
+# Fora de projeto: uma linha. A descrição das skills já está no contexto; isto só aponta o caminho.
+if [ "$OD_IS_PROJECT" = 0 ]; then
+  od_emit SessionStart "[onedirection] Pasta fora de projeto. Se o usuário for começar um projeto novo aqui, use onedirection:capturing-the-vision antes de qualquer código."
+  exit 0
 fi
 
 compact_block=""
@@ -58,17 +40,43 @@ if [ "$source_kind" = "compact" ]; then
 O resumo acima é uma pista, não uma fonte. Antes de continuar qualquer tarefa, use onedirection:recovering-focus."
 fi
 
-escape_for_json() {
-  local s="$1"
-  s="${s//\\/\\\\}"
-  s="${s//\"/\\\"}"
-  s="${s//$'\n'/\\n}"
-  s="${s//$'\r'/\\r}"
-  s="${s//$'\t'/\\t}"
-  printf '%s' "$s"
-}
+# Projeto sem NORTE.md: o essencial, curto.
+if [ -z "$OD_NORTE" ]; then
+  od_emit SessionStart "<EXTREMELY_IMPORTANT>
+Você tem onedirection. Este projeto (${OD_ROOT}) ainda NÃO tem NORTE.md, o arquivo com a ideia original.
 
-context="<EXTREMELY_IMPORTANT>
+- Pedido de direção (construir, planejar, priorizar, próxima funcionalidade, continuar o projeto): o PRIMEIRO passo é obrigatório. Use onedirection:mapping-existing-project (tem código) ou onedirection:capturing-the-vision (vazio). Outros docs de visão (README, docs/, HANDOFF, memória) não substituem o NORTE.md: são a matéria-prima do mapeamento.
+- Bug, ajuste pequeno ou pergunta pontual: faça direto.
+- Fato sobre o projeto só com fonte (arquivo:linha, comando com saída, fala do usuário). Sem fonte: vá ler, ou diga \"não verifiquei\".
+- Antes de dizer pronto, funciona, corrigi, ou de commitar: onedirection:verifying-before-done.
+- Regras completas: skill onedirection:using-onedirection.${compact_block}
+</EXTREMELY_IMPORTANT>"
+  exit 0
+fi
+
+# Com NORTE.md: a skill de entrada inteira + o arquivo.
+skill_md="${PLUGIN_ROOT}/skills/using-onedirection/SKILL.md"
+if [ -r "$skill_md" ]; then
+  skill_content="$(<"$skill_md")"
+else
+  skill_content="Erro ao ler a skill using-onedirection"
+fi
+
+norte_content="$(<"$OD_NORTE")"
+norte_block="## NORTE.md deste projeto (${OD_NORTE})
+
+Esta é a ideia original. Ela manda no escopo.
+
+${norte_content}"
+lines=0
+while IFS= read -r _; do lines=$((lines + 1)); done <<< "$norte_content"
+if [ "$lines" -gt 120 ]; then
+  norte_block="${norte_block}
+
+> Aviso do onedirection: o NORTE.md tem ${lines} linhas (o ideal é até ~80). Sugira ao usuário enxugar: ele é lido em toda sessão."
+fi
+
+od_emit SessionStart "<EXTREMELY_IMPORTANT>
 Você tem onedirection: a ideia original do projeto nunca se perde.
 
 **Abaixo está o conteúdo completo da skill 'onedirection:using-onedirection'. Para as outras skills do onedirection, use a ferramenta 'Skill':**
@@ -77,6 +85,4 @@ ${skill_content}
 
 ${norte_block}${compact_block}
 </EXTREMELY_IMPORTANT>"
-
-printf '{\n  "hookSpecificOutput": {\n    "hookEventName": "SessionStart",\n    "additionalContext": "%s"\n  }\n}\n' "$(escape_for_json "$context")"
 exit 0
