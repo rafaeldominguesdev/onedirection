@@ -11,6 +11,7 @@ onedirection é uma disciplina de foco pro seu agente de código: um conjunto de
 - [Quando algo dá errado](#quando-algo-dá-errado)
 - [O que tem dentro](#o-que-tem-dentro)
 - [Filosofia](#filosofia)
+- [Testes](#testes)
 - [Contribuindo](#contribuindo)
 - [Atualizando](#atualizando)
 - [Licença](#licença)
@@ -101,8 +102,12 @@ Se o Claude parecer perdido — repetindo trabalho, inventando nome de arquivo, 
 
 ### Hooks
 
-- **SessionStart** (`startup`, `clear`, `compact`) — injeta `using-onedirection` e o `NORTE.md`; na compactação, manda usar `recovering-focus`.
-- **UserPromptSubmit** — em projetos com `NORTE.md`, um lembrete de uma linha e a seção "Foco agora".
+- **SessionStart** (`startup`, `clear`, `compact`) — injeta só o necessário, em três níveis:
+  - **com `NORTE.md`**: a skill `using-onedirection` inteira + o `NORTE.md` (achado na pasta ou na raiz do git, se você abrir o Claude numa subpasta);
+  - **projeto sem `NORTE.md`**: as regras essenciais em poucas linhas (~1.000 caracteres);
+  - **fora de projeto** (sem git, sem manifesto, ou a sua pasta pessoal): uma linha (~150 caracteres).
+  Na compactação, em projeto, manda usar `recovering-focus`.
+- **UserPromptSubmit** — só em projetos com `NORTE.md`: um lembrete de uma linha e a seção "Foco agora".
 
 ## Filosofia
 
@@ -112,12 +117,34 @@ Se o Claude parecer perdido — repetindo trabalho, inventando nome de arquivo, 
 - **O disco não esquece** — Memória de conversa falha numa compactação; arquivo não
 - **O usuário manda** — O onedirection avisa, não bloqueia
 
+## Testes
+
+Dois níveis:
+
+- **Hooks e estrutura** (rápido, grátis): `bash tests/hooks/test-hooks.sh`
+- **Comportamento** (sessões reais do Claude, ~US$ 0,20–0,80 cada): `python3 tests/evals/run.py`
+
+Os testes de comportamento rodam cada cenário de `tests/evals/scenarios.json` numa sessão nova do Claude, numa cópia temporária de um projeto de mentira, com a versão **local** do plugin. Depois corrigem automaticamente o transcript e os arquivos:
+
+| Cenário | O que prova |
+|---|---|
+| `evolucao` | Ideia nova que serve à promessa é feita e registrada, sem alarme |
+| `conflito` | Pedido que bate num não-objetivo para antes do código e cita o trecho |
+| `pedido-pequeno` | Ajuste pequeno sem cerimônia e sem cair na isca do `TODO: refatorar` |
+| `alucinacao` | Pergunta sobre função inexistente: procura e diz que não existe |
+| `retomada` | Trabalho pela metade: reconstrói pelo `NORTE.md` e pelo git |
+| `mapeamento` | Projeto sem `NORTE.md`: mapeia primeiro e não grava nada sem aprovação |
+| `projeto-novo` | Pasta vazia: entrevista antes de qualquer código |
+| `fora-de-projeto` | Fora de projeto: fica quieto e quase não gasta contexto |
+
+Rode um só com `python3 tests/evals/run.py conflito`, e meça instabilidade com `--repeat 3`.
+
 ## Contribuindo
 
 1. Faça um fork do repositório
 2. Crie uma branch pro seu trabalho
 3. Mantenha cada skill curta e com um trabalho só; regras duras em blocos (`<HARD-GATE>`, Lei de Ferro) e racionalizações em tabela "Pensamento | Realidade"
-4. Rode os testes: `bash tests/hooks/test-hooks.sh` e `claude plugin validate .`
+4. Rode os dois níveis de teste. Mudou o texto de uma skill? Os testes de comportamento são obrigatórios: é assim que se descobre que uma frase nova quebrou um caso antigo
 5. Abra um PR explicando, com as suas palavras, o problema que a mudança resolve
 
 ## Atualizando
