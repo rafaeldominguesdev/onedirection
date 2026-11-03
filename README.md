@@ -1,10 +1,11 @@
 # onedirection
 
-onedirection é uma disciplina de foco pro seu agente de código: um conjunto de skills e um hook de início de sessão que garantem que o Claude nunca perca a ideia original do projeto, não invente fatos sobre ele e não diga "pronto" sem prova.
+onedirection é uma disciplina de foco pro seu agente de código: sete skills, três hooks e um validador que **orientam** o Claude a não perder a ideia original do projeto, a não inventar fatos sobre ele e a não dizer "pronto" sem prova, e que **cobram por código** a parte que dá pra cobrar. O que é cobrado e o que depende do modelo está explicado em [O que é garantido e o que não é](#o-que-é-garantido-e-o-que-não-é).
 
 ## Sumário
 
 - [Como funciona](#como-funciona)
+- [Em 5 minutos](#em-5-minutos)
 - [Instalação](#instalação)
 - [O fluxo básico](#o-fluxo-básico)
 - [O NORTE.md](#o-nortemd)
@@ -12,6 +13,7 @@ onedirection é uma disciplina de foco pro seu agente de código: um conjunto de
 - [O que tem dentro](#o-que-tem-dentro)
 - [Filosofia](#filosofia)
 - [Testes](#testes)
+- [Segurança e privacidade](#segurança-e-privacidade)
 - [Compatibilidade e limites](#compatibilidade-e-limites)
 - [Contribuindo](#contribuindo)
 - [Atualizando](#atualizando)
@@ -25,7 +27,30 @@ Se o projeto já está em andamento, ele lê tudo antes de mexer: docs, manifest
 
 Daí em diante, o `NORTE.md` entra no contexto do Claude no início de toda sessão — e de novo depois de cada compactação, que é exatamente quando agentes costumam esquecer o que estavam fazendo. A cada mensagem sua, ele recebe um lembrete curto com o "Foco agora". Quando um pedido foge do norte, ele para antes de codar, cita o trecho literal do `NORTE.md` e te dá três saídas: mudar o norte (com registro), anotar pra depois ou deixar pra lá. Quando é ele mesmo quem está fugindo — a refatoração "rápida", a lib "melhor" —, a mesma regra vale.
 
-E antes de dizer "pronto", ele roda a verificação, relê o seu pedido item a item e confere o `git diff` atrás de arquivos que ninguém pediu. Como as skills disparam sozinhas, você não precisa fazer nada de especial.
+Antes de dizer "pronto", a skill `verifying-before-done` pede que ele rode a verificação, releia o seu pedido item a item e confira o `git diff` atrás de arquivos que ninguém pediu. Um hook cobra a parte mínima disso: se ele editou código e diz que terminou sem ter conferido nada depois, a resposta volta pra ele uma vez. As skills entram pelas próprias descrições, sem você chamar; os testes de comportamento medem se elas entram na hora certa.
+
+## Em 5 minutos
+
+```bash
+# 1. instalar (dentro do Claude Code)
+/plugin marketplace add rafaeldominguesdev/onedirection
+/plugin install onedirection@onedirection
+# reinicie o Claude
+
+# 2. conferir que carregou (no terminal)
+claude plugin details onedirection@onedirection    # 7 skills, 3 hooks
+
+# 3. testar numa pasta vazia
+mkdir /tmp/teste-onedirection && cd /tmp/teste-onedirection && claude
+#    peça: "quero criar um app de lista de compras"
+#    esperado: ele pergunta antes de escrever código, e grava um NORTE.md quando você aprovar
+
+# 4. validar o NORTE.md gerado (no repositório do plugin)
+~/.claude/plugins/marketplaces/onedirection/scripts/validate-norte /tmp/teste-onedirection/NORTE.md
+
+# 5. desligar, se quiser
+/plugin disable onedirection@onedirection
+```
 
 ## Instalação
 
@@ -59,7 +84,7 @@ A cerimônia é proporcional ao risco: **rápido** pra bug e ajuste (faz direto)
 5. **recovering-focus** — Ativa depois de uma compactação ou retomada. Reconstrói o ponto exato pelo `NORTE.md` e pelo git, não pela memória, e declara onde está antes de continuar.
 6. **checking-progress** — Ativa em "onde estamos?" ou no fim de uma etapa. Verifica cada item do v1 no código, com evidência, e aponta o próximo passo.
 
-**O agente confere as skills antes de qualquer tarefa.** São fluxos obrigatórios, não sugestões.
+A skill de entrada manda conferir as skills antes de qualquer tarefa. Isso é instrução pro modelo, não trava: os testes de comportamento são o que mostra se ele segue.
 
 ## O NORTE.md
 
@@ -111,8 +136,11 @@ Se o Claude parecer perdido — repetindo trabalho, inventando nome de arquivo, 
   - **projeto sem `NORTE.md`**: as regras essenciais em poucas linhas (~1.000 caracteres);
   - **fora de projeto** (sem git, sem manifesto, ou a sua pasta pessoal): uma linha (~150 caracteres).
   Na compactação, em projeto, manda usar `recovering-focus`.
-- **UserPromptSubmit** — só em projetos com `NORTE.md`: sempre a seção "Foco agora"; a linha de regras só quando o pedido fala de escopo, implementação ou conclusão.
-- **Stop** — "pronto" sem prova não passa. Se o Claude editou código, não conferiu nada depois da última edição e diz que terminou sem admitir que não verificou, a resposta volta pra ele **uma vez** pra conferir ou declarar "Não verifiquei: …". Precisa de `python3`; sem ele, esse hook não faz nada.
+- **UserPromptSubmit** — só em projetos com `NORTE.md`: uma regra curta (registrar ideia nova, conflito → guarda, prova antes de "pronto") e a seção "Foco agora", como dado do arquivo.
+- **Stop** — cobra uma regra mínima: se o Claude editou um arquivo que não é Markdown/texto, não conferiu nada **depois da última edição** e diz que terminou sem admitir que não verificou, a resposta volta pra ele **uma vez** pra conferir ou declarar "Não verifiquei: …".
+  - Conta como conferência: um comando (`Bash`), a skill `verifying-before-done`, ou `Read`/`Grep` que olhe o arquivo editado. `Glob` não conta.
+  - É uma heurística por palavras: não sabe se a verificação provou o que foi afirmado, e frases fora da lista passam.
+  - Precisa de `python3`; sem ele, esse hook não faz nada.
 
 ### Validador do NORTE.md
 
@@ -160,6 +188,13 @@ Rode um só com `python3 tests/evals/run.py conflito`, meça instabilidade com `
 
 No GitHub, os testes dos hooks rodam a cada push (Ubuntu e macOS, incluindo o bash 3.2 do macOS) junto com `claude plugin validate`. Os de comportamento custam, então rodam à mão: **Actions › comportamento › Run workflow**, com o segredo `ANTHROPIC_API_KEY` configurado.
 
+## Segurança e privacidade
+
+- **O que roda:** três hooks em bash (`hooks/session-start`, `hooks/user-prompt-submit`, `hooks/stop`), as funções que eles usam (`hooks/lib.sh`) e um script Python (`hooks/stop_check.py`), com as permissões do seu usuário, como todo plugin do Claude Code. Vale ler os cinco antes de instalar: somados, dão cerca de 450 linhas.
+- **O que não faz:** não acessa a rede, não instala nada, não tem telemetria, não grava fora do projeto. O hook Stop só **lê** o transcript da sessão.
+- **O que entra no contexto do Claude:** o texto das skills, e o `NORTE.md` e o "Foco agora" do projeto aberto.
+- **Repositório de outra pessoa:** o `NORTE.md` é escrito por quem mantém o repositório. Por isso ele entra **delimitado como dado** (fora da moldura de instruções do plugin), com tamanho limitado e com a orientação de não seguir ordens que não sejam sobre o escopo do produto. Isso reduz o risco de injeção de instruções, mas não zera: abrir um projeto que você não conhece continua pedindo cuidado, com ou sem este plugin.
+
 ## Compatibilidade e limites
 
 | Tema | Situação |
@@ -173,11 +208,31 @@ No GitHub, os testes dos hooks rodam a cada push (Ubuntu e macOS, incluindo o ba
 | Worktrees | Funciona: o `NORTE.md` é versionado e o `.git` em forma de arquivo é reconhecido |
 | Pasta pessoal | Nunca é tratada como projeto, mesmo com repositório de dotfiles |
 | Outros plugins de fluxo | Pensado pra conviver com a superpowers (onedirection decide **o quê**, ela decide **o como**). **Ainda não testado em conjunto** |
-| Contexto gasto | Fora de projeto ~150 caracteres; projeto sem `NORTE.md` ~900; com `NORTE.md`, a skill de entrada inteira + o arquivo |
 
 **Desativar por um tempo:** `/plugin disable onedirection@onedirection` (reative com `/plugin enable onedirection@onedirection`).
 
 **`NORTE.md` desatualizado:** peça "confere o progresso" (dispara `checking-progress`, que compara cada item com o código) ou rode `scripts/validate-norte` pra conferir a estrutura.
+
+### Custo de contexto (medido na 0.4.3)
+
+| Situação | No início da sessão | A cada mensagem |
+|---|---|---|
+| Sempre (descrições das 7 skills) | ~466 tokens | — |
+| Fora de projeto | +148 caracteres (~37 tokens) | nada |
+| Projeto sem `NORTE.md` | +906 caracteres (~226 tokens) | nada |
+| Projeto com `NORTE.md` (exemplo de 898 bytes) | +7.994 caracteres (~2.000 tokens) | +429 caracteres (~107 tokens) |
+
+O `NORTE.md` injetado é cortado em 12.000 caracteres. Os números de skill vêm de `claude plugin details onedirection@onedirection`; os dos hooks, dos próprios hooks.
+
+### O que é garantido e o que não é
+
+| Cobrado por código | Depende do modelo (medido pelos testes, não garantido) |
+|---|---|
+| O `NORTE.md` entra no contexto no início, no `/clear` e depois de cada compactação | Chamar a skill certa na hora certa |
+| O "Foco agora" entra a cada mensagem | Entrevistar antes de codar, mapear antes de opinar |
+| "Pronto" depois de editar código, sem conferência posterior e sem admitir, volta uma vez | Fazer a verificação **certa** (o hook só vê que houve alguma) |
+| A estrutura do `NORTE.md` é validada e problemas são avisados | Parar no conflito e citar o trecho literal |
+| O `NORTE.md` entra como dado, delimitado e com tamanho limitado | Não seguir ordens escritas dentro de um `NORTE.md` malicioso |
 
 **Limite honesto:** as regras são instruções pro modelo, e só uma delas é cobrada por código (o hook de "pronto" sem prova). O resto é medido pelos testes de comportamento, não garantido. Modelos diferentes seguem as instruções de jeitos diferentes: o Sonnet, por exemplo, só passou a registrar ideias novas em "Decisões" depois que a regra entrou no lembrete de cada mensagem.
 
