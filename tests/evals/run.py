@@ -81,25 +81,47 @@ def setup(sc: dict, work: Path):
 
 
 def run_claude(sc: dict, work: Path, transcript: Path):
-    cmd = [
-        "claude", "-p", sc["prompt"],
+    """Roda o pedido. Com 'steps', roda vários pedidos na MESMA sessão (--resume), ex.: [..., "/compact", ...]."""
+    prompts = sc.get("steps") or [sc["prompt"]]
+    base = [
         "--output-format", "stream-json", "--verbose",
         "--max-turns", str(sc.get("max_turns", 30)),
         "--model", MODEL,
         "--plugin-dir", str(ROOT),
         "--settings", SETTINGS,
         "--strict-mcp-config",
-        "--no-session-persistence",
+        "--include-hook-events",  # mostra o hook Stop no stream
         "--allowedTools", ALLOWED_TOOLS,
     ]
+    session_id = None
     with open(transcript, "w") as out:
-        subprocess.run(cmd, cwd=work, stdin=subprocess.DEVNULL, stdout=out,
-                       stderr=subprocess.STDOUT, timeout=sc.get("timeout", 900))
+        for prompt in prompts:
+            cmd = ["claude", "-p", prompt, *base] + (["--resume", session_id] if session_id else [])
+            r = subprocess.run(cmd, cwd=work, stdin=subprocess.DEVNULL, capture_output=True, text=True,
+                               timeout=sc.get("timeout", 900))
+            out.write(r.stdout + r.stderr)
+            for line in r.stdout.splitlines():
+                try:
+                    e = json.loads(line)
+                except json.JSONDecodeError:
+                    continue
+                if e.get("type") == "result" and e.get("session_id"):
+                    session_id = e["session_id"]
+
+
+def cleanup_session(work: Path):
+    """A sessão precisa ser gravada (o hook Stop lê o transcript); depois apagamos a pasta dela."""
+    projects = Path.home() / ".claude" / "projects"
+    suffix = re.sub(r"[^A-Za-z0-9]", "-", work.name)
+    hits = [d for d in projects.glob(f"*{suffix}") if d.is_dir()] if projects.is_dir() else []
+    if len(hits) == 1:
+        shutil.rmtree(hits[0], ignore_errors=True)
 
 
 def parse(transcript: Path) -> dict:
     t = {"skills": [], "tools": [], "texts": [], "result": "", "cost": 0.0,
-         "turns": 0, "plugin_paths": [], "context_chars": 0, "events": [], "stop_blocks": 0}
+         "turns": 0, "plugin_paths": [], "context_chars": 0, "events": [], "stop_blocks": 0,
+         "compact_notice": False}
     for line in transcript.read_text(errors="replace").splitlines():
         try:
             e = json.loads(line)
@@ -116,6 +138,8 @@ def parse(transcript: Path) -> dict:
                 ctx = ""
             if "onedirection" in ctx:
                 t["context_chars"] += len(ctx)
+            if "acabou de ser compactado" in ctx:
+                t["compact_notice"] = True
         elif kind == "system" and sub == "hook_response" and e.get("hook_event") == "Stop":
             if '"block"' in (e.get("output") or ""):
                 t["stop_blocks"] += 1
@@ -131,8 +155,8 @@ def parse(transcript: Path) -> dict:
                     t["events"].append(("text", c.get("text", ""), None))
         elif kind == "result":
             t["result"] = e.get("result") or ""
-            t["cost"] = e.get("total_cost_usd") or 0.0
-            t["turns"] = e.get("num_turns") or 0
+            t["cost"] += e.get("total_cost_usd") or 0.0
+            t["turns"] += e.get("num_turns") or 0
     return t
 
 
@@ -229,6 +253,10 @@ def grade(sc: dict, t: dict, before: dict, after: dict) -> list:
         n = after.get(f, "").count("\n")
         if n > lim:
             fails.append(f"{f} tem {n} linhas (limite {lim}): construiu além do v1")
+    if ck.get("compact_notice") and not t["compact_notice"]:
+        fails.append("o hook não avisou a compactação")
+    if "min_stop_blocks" in ck and t["stop_blocks"] < ck["min_stop_blocks"]:
+        fails.append(f"hook de fim de resposta bloqueou {t['stop_blocks']} vez(es), esperado pelo menos {ck['min_stop_blocks']}")
     if "max_context_chars" in ck and t["context_chars"] > ck["max_context_chars"]:
         fails.append(f"hook injetou {t['context_chars']} chars (limite {ck['max_context_chars']})")
     return fails
@@ -251,6 +279,7 @@ def run_one(sc: dict, rep: int, out_dir: Path) -> dict:
     except Exception as exc:  # erro do próprio executor
         t, fails = {"cost": 0, "turns": 0, "skills": [], "context_chars": 0, "stop_blocks": 0}, [f"erro do executor: {exc!r}"]
     finally:
+        cleanup_session(work.resolve())
         shutil.rmtree(work, ignore_errors=True)
     return {"tag": tag, "fails": fails, "cost": t["cost"], "turns": t["turns"],
             "skills": t["skills"], "ctx": t["context_chars"], "stops": t.get("stop_blocks", 0), "secs": int(time.time() - t0),
