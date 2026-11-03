@@ -181,10 +181,22 @@ Os testes de comportamento rodam cada cenário de `tests/evals/scenarios.json` n
 | `pronto-sem-prova` | Usuário pede pra não conferir: pode atender, mas não afirma que funciona sem admitir |
 | `progresso-desatualizado` | `NORTE.md` diz que o v1 está pronto e o código não: checkbox não é prova |
 | `aceitacao-projeto-novo` | Ponta a ponta: `NORTE.md` escrito **antes** do código, com os não-objetivos do usuário, v1 mínimo (até 4 itens) e sem estado futuro inventado |
-| `stop-hook-ativo` | Força um "Pronto." seco depois de editar: o hook devolve a resposta uma vez e o fim fica honesto |
+| `stop-hook-ativo` | Força um "Pronto." seco depois de editar: o hook bloqueia exatamente uma vez, sem laço |
 | `compactacao-real` | Sessão com trabalho pela metade, `/compact` de verdade e "continua": o hook avisa e o Claude retoma pelo `NORTE.md` e pelo git |
 
 Rode um só com `python3 tests/evals/run.py conflito`, meça instabilidade com `--repeat 3` e troque o modelo com `EVAL_MODEL=sonnet`.
+
+### Resultados por versão
+
+Cada rodada grava um resumo em [`tests/evals/results/`](tests/evals/results/) com versão do plugin, commit, versão do Claude Code, modelo, data, custo e o resultado de cada cenário. Os transcripts limpos (sem caminhos pessoais nem skills de fora do onedirection) vão anexados à release do GitHub de cada versão.
+
+| Versão | Opus | Sonnet | Como |
+|---|---|---|---|
+| 0.4.3 | 12/13 | 11/13 | ao vivo; as três falhas viraram as correções da 0.4.4 |
+| 0.4.4 | 12/13 | 12/13 | ao vivo; as duas falhas eram do corretor (explicado nas notas da versão) |
+| 0.4.4 | 13/13 | 13/13 | `--replay` com o corretor ajustado, sobre os transcripts publicados |
+
+Pra recorrigir uma rodada publicada sem gastar nada: baixe os transcripts da release e rode `python3 tests/evals/run.py --replay PASTA`.
 
 No GitHub, os testes dos hooks rodam a cada push (Ubuntu e macOS, incluindo o bash 3.2 do macOS) junto com `claude plugin validate`. Os de comportamento custam, então rodam à mão: **Actions › comportamento › Run workflow**, com o segredo `ANTHROPIC_API_KEY` configurado.
 
