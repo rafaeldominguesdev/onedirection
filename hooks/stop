@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+# Stop hook do onedirection: "pronto" sem prova não passa (veja stop_check.py).
+# Sem python3 no sistema, não faz nada: este hook nunca pode travar o usuário.
+case "$0" in
+  */*) SCRIPT_DIR="$(cd "${0%/*}" && pwd)" ;;
+  *) SCRIPT_DIR="$(pwd)" ;;
+esac
+if command -v python3 >/dev/null 2>&1; then
+  exec python3 "${SCRIPT_DIR}/stop_check.py"
+fi
+while IFS= read -r _ 2>/dev/null; do :; done || :
+printf '{}\n'
