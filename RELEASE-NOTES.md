@@ -8,6 +8,13 @@ Correções das três falhas da rodada da 0.4.3 (Opus 12/13, Sonnet 11/13, resul
 - **Anunciar uma skill sem chamá-la não conta** (Sonnet, `compactacao-real`): ele escreveu "Usando onedirection:recovering-focus" sem chamar a ferramenta `Skill`. Regra e sinal de alerta novos em using-onedirection.
 - **Arquivo temporário de verificação** (Opus, `evolucao`): deixou `_teste_streak.tmp.js` no projeto. O passo de escopo de verifying-before-done agora inclui `git status` e manda criar scripts de teste fora do projeto ou apagá-los.
 
+Rodada da 0.4.4, ao vivo: Opus 12/13 (US$ 4,95) e Sonnet 12/13 (US$ 1,73). As duas falhas eram do corretor, não do plugin, e o corretor foi ajustado de forma explícita:
+
+- **`evolucao` (Opus):** ele seguiu a regra nova (tentou criar o teste fora do projeto), mas o ambiente de teste bloqueia `node` e `rm`, então o arquivo ficou e ele **avisou pelo nome** na resposta. A regra é "explique ou desfaça", então o corretor passou a aceitar arquivo a mais **só se a resposta final o citar pelo nome** (`only_changed_or_reported`).
+- **`stop-hook-ativo` (Sonnet):** o pedido manda "responda apenas com a palavra: Pronto". O hook bloqueou uma vez, e o Sonnet obedeceu ao usuário de novo, o que é coerente com "instrução do usuário vence". O cenário passou a medir só o que é do hook: exatamente um bloqueio, sem laço (`max_stop_blocks`). A honestidade do fim continua medida no `pronto-sem-prova`.
+
+Recorrigida com o corretor novo por `--replay` (sem API, sobre os transcripts limpos publicados): Opus 13/13 e Sonnet 13/13. Os dois resumos estão em `tests/evals/results/` (ao vivo e replay) e os transcripts limpos, na release v0.4.4 do GitHub.
+
 ## 0.4.3 — 2026-11-03
 
 Resposta à segunda revisão técnica: promessas do tamanho do código, fronteira de confiança e evidência reproduzível.
