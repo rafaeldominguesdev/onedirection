@@ -24,7 +24,8 @@ ANTES de qualquer afirmação de status:
 
 1. PROVA     Qual comando prova isso? Rode inteiro, agora. Leia a saída e o exit code.
 2. PEDIDO    Releia o pedido original do usuário. Liste item a item. Cada um foi feito?
-3. ESCOPO    git diff --stat. Algum arquivo mudou sem ter sido pedido? Isso é fuga — explique ou desfaça.
+3. ESCOPO    git status + git diff --stat. Algum arquivo mudou ou apareceu sem ter sido pedido? Isso é fuga — explique ou desfaça.
+             Script de teste, rascunho, log: crie fora do projeto (pasta temporária) ou apague antes de terminar.
 4. NORTE     O resultado contradiz algum não-objetivo do NORTE.md?
 5. SÓ ENTÃO  Afirme, com a prova junto. Se algo falhou, diga o status real.
 
