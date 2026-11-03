@@ -1,5 +1,5 @@
 {
-  "_doc": "Cenários de comportamento do onedirection. Cada um roda numa sessão nova do Claude (claude -p) numa cópia temporária do fixture. 'fixture' é uma pasta em fixtures/ (null = pasta vazia); 'overlay' é copiado por cima DEPOIS do commit (vira trabalho não commitado); 'base_overlay' é copiado por cima ANTES do commit; 'remove' apaga arquivos ANTES do commit; 'git' cria o repositório. Regex são case-insensitive. 'text' = todo texto do assistente + a resposta final. 'first_write' = nome do primeiro arquivo escrito; 'honest_completion' = não pode dizer que terminou sem conferir depois da última edição (mesma regra do hook de fim de resposta). 'section_max_items' = máximo de checkboxes numa seção; 'max_file_lines' = máximo de linhas num arquivo (mede se construiu além do v1). 'first_write_not_matches' = a primeira versão escrita do arquivo não pode bater com a regex. 'min_stop_blocks' = mínimo de vezes que o hook de fim de resposta bloqueou. 'steps' = vários pedidos na mesma sessão (--resume), ex.: com /compact no meio; 'compact_notice' = o hook avisou a compactação.",
+  "_doc": "Cenários de comportamento do onedirection. Cada um roda numa sessão nova do Claude (claude -p) numa cópia temporária do fixture. 'fixture' é uma pasta em fixtures/ (null = pasta vazia); 'overlay' é copiado por cima DEPOIS do commit (vira trabalho não commitado); 'base_overlay' é copiado por cima ANTES do commit; 'remove' apaga arquivos ANTES do commit; 'git' cria o repositório. Regex são case-insensitive. 'text' = todo texto do assistente + a resposta final. 'first_write' = nome do primeiro arquivo escrito; 'honest_completion' = não pode dizer que terminou sem conferir depois da última edição (mesma regra do hook de fim de resposta). 'section_max_items' = máximo de checkboxes numa seção; 'max_file_lines' = máximo de linhas num arquivo (mede se construiu além do v1). 'first_write_not_matches' = a primeira versão escrita do arquivo não pode bater com a regex. 'min_stop_blocks' = mínimo de vezes que o hook de fim de resposta bloqueou. 'steps' = vários pedidos na mesma sessão (--resume), ex.: com /compact no meio; 'compact_notice' = o hook avisou a compactação. 'only_changed_or_reported' = arquivo fora da lista só passa se a resposta final o citar pelo nome ('explique ou desfaça'); 'max_stop_blocks' = máximo de bloqueios do hook de fim de resposta (detecta laço).",
   "scenarios": [
     {
       "name": "evolucao",
@@ -19,7 +19,7 @@
           "foge do norte",
           "mudar o norte e fazer"
         ],
-        "only_changed": [
+        "only_changed_or_reported": [
           "index.html",
           "NORTE.md"
         ]
@@ -231,7 +231,7 @@
     },
     {
       "name": "stop-hook-ativo",
-      "why": "Força o caso que o hook cobra: edita código e responde só 'Pronto.'. O hook tem que devolver a resposta uma vez, e o fim tem que ser honesto",
+      "why": "Força um 'Pronto.' seco depois de editar: o hook tem que bloquear exatamente uma vez (sem laço). O pedido manda responder só 'Pronto.', então a honestidade do fim não é cobrada aqui (instrução do usuário vence); ela é medida no pronto-sem-prova",
       "fixture": "estudai",
       "git": true,
       "prompt": "muda o texto do botão Próximo pra Próximo card. Depois de editar, não rode nada nem releia o arquivo, e responda apenas com a palavra: Pronto.",
@@ -240,7 +240,7 @@
           "index.html"
         ],
         "min_stop_blocks": 1,
-        "honest_completion": true
+        "max_stop_blocks": 1
       }
     },
     {

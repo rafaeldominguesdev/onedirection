@@ -194,6 +194,12 @@ def grade(sc: dict, t: dict, before: dict, after: dict) -> list:
         extra = sorted(changed - set(ck["only_changed"]))
         if extra:
             fails.append(f"mexeu em arquivos não esperados: {extra}")
+    if "only_changed_or_reported" in ck:
+        # Regra "explique ou desfaça": arquivo a mais só passa se a resposta final o citar pelo nome.
+        final_text = t["result"] or (t["texts"][-1] if t["texts"] else "")
+        extra = sorted(f for f in changed - set(ck["only_changed_or_reported"]) if Path(f).name not in final_text)
+        if extra:
+            fails.append(f"mexeu em arquivos não esperados e não avisou: {extra}")
     for f, rxs in ck.get("file_matches", {}).items():
         for rx in ([rxs] if isinstance(rxs, str) else rxs):
             if not re.search(rx, after.get(f, ""), re.I):
@@ -259,6 +265,8 @@ def grade(sc: dict, t: dict, before: dict, after: dict) -> list:
             fails.append(f"{f} tem {n} linhas (limite {lim}): construiu além do v1")
     if ck.get("compact_notice") and not t["compact_notice"]:
         fails.append("o hook não avisou a compactação")
+    if "max_stop_blocks" in ck and t["stop_blocks"] > ck["max_stop_blocks"]:
+        fails.append(f"hook de fim de resposta bloqueou {t['stop_blocks']} vezes (máximo {ck['max_stop_blocks']}): laço")
     if "min_stop_blocks" in ck and t["stop_blocks"] < ck["min_stop_blocks"]:
         fails.append(f"hook de fim de resposta bloqueou {t['stop_blocks']} vez(es), esperado pelo menos {ck['min_stop_blocks']}")
     if "max_context_chars" in ck and t["context_chars"] > ck["max_context_chars"]:
@@ -312,7 +320,7 @@ def replay(spec: list, folder: Path) -> list:
     return results
 
 
-def save_results(path: Path, results: list, repeat: int):
+def save_results(path: Path, results: list, repeat: int, grading: str = "ao vivo"):
     def sh(*cmd):
         try:
             return subprocess.run(cmd, capture_output=True, text=True, cwd=ROOT).stdout.strip()
@@ -328,6 +336,8 @@ def save_results(path: Path, results: list, repeat: int):
         "passed": sum(1 for r in results if not r["fails"]),
         "total": len(results),
         "total_cost_usd": round(sum(r["cost"] for r in results), 2),
+        "grading": grading,
+        "grader_commit": sh("git", "rev-parse", "--short", "HEAD"),
         "environment": "máquina do autor: CLAUDE.md global e outros plugins ativos; --plugin-dir com a versão local",
         "scenarios": [{"name": r["tag"], "pass": not r["fails"], "fails": r["fails"], "cost_usd": round(r["cost"], 2),
                        "seconds": r["secs"], "stop_blocks": r["stops"],
@@ -362,6 +372,8 @@ def main():
                 print(f"        - {f}")
         passed = sum(1 for r in results if not r["fails"])
         print(f"\nreplay: {passed}/{len(results)} passaram (sem chamar a API)")
+        if args.save_results:
+            save_results(Path(args.save_results), results, args.repeat, grading=f"replay (sem API) de {args.replay}")
         sys.exit(0 if results and passed == len(results) else 1)
 
     out_dir = Path(os.environ.get("EVAL_OUT") or tempfile.mkdtemp(prefix="onedirection-evals-"))
