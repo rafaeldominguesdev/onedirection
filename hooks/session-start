@@ -1,0 +1,60 @@
+#!/usr/bin/env bash
+# SessionStart hook do plugin onedirection.
+# Injeta a skill using-onedirection e, se existir, o NORTE.md do projeto.
+# Roda em startup, clear e compact: depois de uma compactação a ideia original volta pro contexto.
+
+set -euo pipefail
+
+# Mesma resolução de caminho da superpowers: sem dirname, porque o PATH pode vir quebrado no startup.
+case "$0" in
+  */*) SCRIPT_DIR="$(cd "${0%/*}" && pwd)" ;;
+  *) SCRIPT_DIR="$(pwd)" ;;
+esac
+PLUGIN_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
+PROJECT_DIR="${CLAUDE_PROJECT_DIR:-$PWD}"
+
+# Consome o stdin do hook sem depender de cat.
+while IFS= read -r _ 2>/dev/null; do :; done || :
+
+skill_md="${PLUGIN_ROOT}/skills/using-onedirection/SKILL.md"
+if [ -r "$skill_md" ]; then
+  skill_content="$(<"$skill_md")"
+else
+  skill_content="Erro ao ler a skill using-onedirection"
+fi
+
+norte_md="${PROJECT_DIR}/NORTE.md"
+if [ -r "$norte_md" ]; then
+  norte_block="## NORTE.md deste projeto (${PROJECT_DIR})
+
+Esta é a ideia original. Ela manda no escopo.
+
+$(<"$norte_md")"
+else
+  norte_block="## Este projeto ainda não tem NORTE.md
+
+Se o usuário for construir algo aqui, a ideia precisa ser capturada antes do código: pasta vazia → onedirection:capturing-the-vision; já tem código → onedirection:mapping-existing-project."
+fi
+
+escape_for_json() {
+  local s="$1"
+  s="${s//\\/\\\\}"
+  s="${s//\"/\\\"}"
+  s="${s//$'\n'/\\n}"
+  s="${s//$'\r'/\\r}"
+  s="${s//$'\t'/\\t}"
+  printf '%s' "$s"
+}
+
+context="<EXTREMELY_IMPORTANT>
+Você tem onedirection: a ideia original do projeto nunca se perde.
+
+**Abaixo está o conteúdo completo da skill 'onedirection:using-onedirection'. Para as outras skills do onedirection, use a ferramenta 'Skill':**
+
+${skill_content}
+
+${norte_block}
+</EXTREMELY_IMPORTANT>"
+
+printf '{\n  "hookSpecificOutput": {\n    "hookEventName": "SessionStart",\n    "additionalContext": "%s"\n  }\n}\n' "$(escape_for_json "$context")"
+exit 0

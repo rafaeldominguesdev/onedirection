@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+# UserPromptSubmit hook do plugin onedirection.
+# Lembrete de uma linha a cada mensagem, só em projeto que tem NORTE.md.
+
+set -euo pipefail
+
+while IFS= read -r _ 2>/dev/null; do :; done || :
+
+PROJECT_DIR="${CLAUDE_PROJECT_DIR:-$PWD}"
+if [ ! -r "${PROJECT_DIR}/NORTE.md" ]; then
+  printf '{}\n'
+  exit 0
+fi
+
+msg="[onedirection] Este projeto tem NORTE.md (carregado no início da sessão). Se este pedido mexe em escopo, use onedirection:guarding-the-direction antes de agir."
+printf '{\n  "hookSpecificOutput": {\n    "hookEventName": "UserPromptSubmit",\n    "additionalContext": "%s"\n  }\n}\n' "$msg"
+exit 0
