@@ -26,7 +26,9 @@ Vale pra nomes de função, caminhos de arquivo, o que está pronto, o que o usu
 
 ## Qual skill
 
-**Use a skill antes de qualquer resposta ou ação** que ela cubra, inclusive antes de perguntas de esclarecimento ou de explorar o código. Anuncie "Usando onedirection:[skill] pra [motivo]" e siga à risca. Se ela tiver checklist, crie uma tarefa por item.
+**Use a skill antes de qualquer resposta ou ação** que ela cubra, inclusive antes de perguntas de esclarecimento ou de explorar o código. Chame a ferramenta `Skill`, anuncie "Usando onedirection:[skill] pra [motivo]" e siga à risca. Se ela tiver checklist, crie uma tarefa por item.
+
+Anunciar uma skill sem chamá-la pela ferramenta `Skill` não conta: é dizer que seguiu um procedimento que você não leu.
 
 | Situação | Skill |
 |---|---|
@@ -82,6 +84,8 @@ Estes pensamentos significam PARE, você está racionalizando:
 | "Lembro que o arquivo se chama X" | Lembrar não é fonte. Abra. |
 | "Deve estar funcionando" | "Deve" é a palavra de quem não rodou. Rode. |
 | "Vou continuar de onde parei" (depois de compactar) | Você não sabe onde parou. `recovering-focus`. |
+| "Já sei o que a skill manda, faço sem abrir" | A skill pode ter mudado e você não leu esta versão. Chame a ferramenta `Skill`. |
+| "Ele dispensou perguntas, então pulo o NORTE.md" | Dispensar perguntas tira a entrevista, não o arquivo. NORTE.md primeiro. |
 | "Já que estou aqui, melhoro isso" | Não pedido = fuga de escopo. Pergunte. |
 
 ## Regras gerais
