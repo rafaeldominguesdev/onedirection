@@ -62,6 +62,10 @@ Pular um passo = chutar, não verificar.
 | "Não tem como testar isso" | Diga isso explicitamente: "não verifiquei X porque Y". Nunca omita. |
 | "Os outros arquivos eram melhorias óbvias" | Não pedido. Explique no relatório ou desfaça. |
 
+## O hook de fim de resposta
+
+Se você editar código e encerrar a resposta dizendo que terminou sem ter conferido nada depois da última edição (rodar, reler, buscar), o onedirection devolve a resposta pra você uma vez com este lembrete. Não é castigo: é o portão acima sendo cobrado. Confira e mostre a prova, ou declare o que não verificou.
+
 ## Quando não dá pra verificar
 
 Às vezes não dá (sem acesso, hardware, conta). Então o relatório diz, com essas palavras: **"Não verifiquei: <o quê> — porque <motivo>."** Nunca apresente como feito o que não foi visto funcionando.
