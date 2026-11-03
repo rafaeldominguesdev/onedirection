@@ -330,7 +330,8 @@ def save_results(path: Path, results: list, repeat: int):
         "total_cost_usd": round(sum(r["cost"] for r in results), 2),
         "environment": "máquina do autor: CLAUDE.md global e outros plugins ativos; --plugin-dir com a versão local",
         "scenarios": [{"name": r["tag"], "pass": not r["fails"], "fails": r["fails"], "cost_usd": round(r["cost"], 2),
-                       "seconds": r["secs"], "stop_blocks": r["stops"], "skills": r["skills"]}
+                       "seconds": r["secs"], "stop_blocks": r["stops"],
+                       "skills": [x if x.startswith("onedirection:") else "<skill de fora do onedirection>" for x in r["skills"]]}
                       for r in sorted(results, key=lambda x: x["tag"])],
     }
     path.parent.mkdir(parents=True, exist_ok=True)
