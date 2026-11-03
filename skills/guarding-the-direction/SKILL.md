@@ -52,9 +52,24 @@ Isso vai contra o norte: <o que conflita>, porque o NORTE.md diz "<trecho litera
 
 Cite o trecho **literal**. Se você não acha um trecho pra citar, não é conflito — volte pra tabela.
 
-1. **Mudar o norte** — edite a seção afetada e adicione em "Decisões": `AAAA-MM-DD — <mudança> — porque <motivo do usuário>`. Depois faça.
-2. **Anotar em "Depois"** — adicione o item e volte ao foco.
-3. **Deixar pra lá.**
+1. **Mudar o norte** — edite a seção afetada e registre em "Decisões" no formato completo (abaixo). Depois faça.
+2. **Anotar em "Depois"** — adicione o item com a data e o trecho que conflitou, e volte ao foco.
+3. **Deixar pra lá** — registre em 1 linha em "Decisões" (`AAAA-MM-DD — descartado: <pedido> — conflitava com "<trecho>"`), pra a ideia não voltar sem contexto.
+
+### Registro de mudança de direção
+
+Mudança de direção é o evento mais importante do projeto. O registro tem que deixar alguém, daqui a 3 meses, entender o que mudou e por quê:
+
+```
+- AAAA-MM-DD — MUDANÇA: <o que mudou, em 1 frase>
+  - pedido: "<o pedido do usuário, literal ou quase>"
+  - conflitava com: "<trecho literal do NORTE.md antes da mudança>"
+  - aprovado por: usuário, opção 1
+  - seções alteradas: <ex.: NÃO é, Restrições>
+  - refazer: <o que precisa ser reverificado: itens do v1, testes, "Pronto quando" — ou "nada">
+```
+
+Data verificada com `date`, nunca chutada.
 
 ## Registrar evolução
 
