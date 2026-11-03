@@ -21,8 +21,11 @@ CLAIM = re.compile(
     re.IGNORECASE,
 )
 DISCLOSURE = re.compile(
-    r"n[ãa]o (verifiquei|testei|rodei|conferi|executei|consegui (verificar|testar|rodar|conferir))|"
-    r"sem (verificar|testar)|not (verified|tested)|didn'?t (verify|test|run)|could(n'?t| not) (verify|test)",
+    r"n[ãa]o (foi |foram |cheguei a |consegui )?(verific|verifiq|test|rod|confer|execut|reli|reler|abri|cheq|valid|olhei)\w*|"
+    r"nem (verific|verifiq|test|rod|confer|execut|reli|abri|cheq|valid|olhei)\w*|"
+    r"sem (verificar|testar|rodar|conferir|abrir)|"
+    r"not (yet )?(verified|tested|run|checked)|(didn|haven)'?t (verif|test|run|check)\w*|"
+    r"could(n'?t| not) (verify|test|run|check)|untested|unverified",
     re.IGNORECASE,
 )
 
