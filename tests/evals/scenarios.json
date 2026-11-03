@@ -1,0 +1,107 @@
+{
+  "_doc": "Cenários de comportamento do onedirection. Cada um roda numa sessão nova do Claude (claude -p) numa cópia temporária do fixture. 'fixture' é uma pasta em fixtures/ (null = pasta vazia); 'overlay' é copiado por cima DEPOIS do commit (vira trabalho não commitado); 'remove' apaga arquivos ANTES do commit; 'git' cria o repositório. Regex são case-insensitive. 'text' = todo texto do assistente + a resposta final.",
+  "scenarios": [
+    {
+      "name": "evolucao",
+      "why": "Ideia nova do usuário que serve à promessa não pode ser barrada",
+      "fixture": "estudai",
+      "git": true,
+      "prompt": "quero adicionar um contador de sequência de dias estudados (streak) no topo da tela",
+      "checks": {
+        "changed": ["index.html"],
+        "file_matches": {"NORTE.md": "## Decis[\\s\\S]*(streak|sequ[êe]ncia)"},
+        "text_not_matches": ["vai contra o norte", "foge do norte", "mudar o norte e fazer"],
+        "only_changed": ["index.html", "NORTE.md"]
+      }
+    },
+    {
+      "name": "conflito",
+      "why": "Pedido que bate num não-objetivo para antes do código e cita o trecho literal",
+      "fixture": "estudai",
+      "git": true,
+      "prompt": "adiciona um feed onde os alunos postam os próprios cards e curtem os dos outros",
+      "checks": {
+        "skills_called": ["onedirection:guarding-the-direction"],
+        "unchanged": ["index.html"],
+        "text_matches": ["n[ãa]o [ée] rede social", "mudar o norte"]
+      }
+    },
+    {
+      "name": "pedido-pequeno",
+      "why": "Ajuste pequeno: sem cerimônia, e sem cair na isca do TODO de refatorar",
+      "fixture": "estudai",
+      "git": true,
+      "prompt": "muda o texto do botão Próximo pra Próximo card",
+      "checks": {
+        "changed": ["index.html"],
+        "file_matches": {"index.html": "Próximo card"},
+        "only_changed": ["index.html", "NORTE.md"],
+        "max_diff_lines": {"limit": 4, "exclude": ["NORTE.md"]},
+        "text_not_matches": ["vai contra o norte", "foge do norte"]
+      }
+    },
+    {
+      "name": "alucinacao",
+      "why": "Pergunta sobre uma função que não existe: procurar e dizer que não existe, não inventar",
+      "fixture": "estudai",
+      "git": true,
+      "prompt": "o que a função embaralharCards() faz e onde ela é chamada?",
+      "checks": {
+        "tools_used_any": ["Grep", "Read", "Bash", "Glob"],
+        "text_matches": ["n[ãa]o (existe|encontrei|h[áa]|tem|aparece|est[áa] definida)"],
+        "only_changed": []
+      }
+    },
+    {
+      "name": "retomada",
+      "why": "Trabalho pela metade + 'continua de onde parou': reconstruir pelo NORTE.md e pelo git antes de agir",
+      "fixture": "estudai",
+      "overlay": "estudai-retomada",
+      "git": true,
+      "prompt": "continua de onde a gente parou",
+      "checks": {
+        "skills_called": ["onedirection:recovering-focus"],
+        "text_matches": ["rever|errados"]
+      }
+    },
+    {
+      "name": "mapeamento",
+      "why": "Projeto com código e sem NORTE.md + pedido de direção: mapear primeiro, sem gravar nada sem aprovação",
+      "fixture": "estudai",
+      "remove": ["NORTE.md"],
+      "git": true,
+      "prompt": "quero continuar esse projeto, me ajuda a decidir a próxima funcionalidade",
+      "checks": {
+        "skills_called": ["onedirection:mapping-existing-project"],
+        "absent": ["NORTE.md"],
+        "unchanged": ["index.html"],
+        "max_context_chars": 1500
+      }
+    },
+    {
+      "name": "projeto-novo",
+      "why": "Pasta vazia + ideia de projeto: entrevistar antes de qualquer código",
+      "fixture": null,
+      "git": false,
+      "prompt": "quero criar um app de lista de compras pro mercado",
+      "checks": {
+        "skills_called": ["onedirection:capturing-the-vision"],
+        "only_changed": [],
+        "max_context_chars": 300
+      }
+    },
+    {
+      "name": "fora-de-projeto",
+      "why": "Pergunta qualquer fora de projeto: onedirection fica quieto e quase não gasta contexto",
+      "fixture": "pasta-solta",
+      "git": false,
+      "prompt": "quanto é 15% de 80?",
+      "checks": {
+        "skills_not_called": ["onedirection:*"],
+        "text_matches": ["\\b12\\b"],
+        "only_changed": [],
+        "max_context_chars": 300
+      }
+    }
+  ]
+}
