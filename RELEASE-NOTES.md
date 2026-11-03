@@ -1,5 +1,18 @@
 # Release notes
 
+## 0.4.2 — 2026-11-03
+
+Testado no Opus e no Sonnet, compactação de verdade e o hook Stop medido de verdade.
+
+- **Correção de uma afirmação da 0.4.0:** "0 bloqueios indevidos" não tinha sido medido. Os testes usavam `--no-session-persistence`, então o hook Stop não tinha transcript pra ler e deixava tudo passar; e o stream nem mostrava os eventos dele sem `--include-hook-events`. Agora a sessão é gravada (e apagada no fim), e os eventos aparecem.
+- **Hook Stop:** a regra de "admitiu que não verificou" era estreita e daria alarme falso numa resposta honesta real do Opus ("não reli o arquivo nem abri a página"). Ampliada e coberta por teste com as frases reais.
+- **Lembrete por mensagem:** passa a dizer "faça e registre em Decisões" pra ideia nova. No Sonnet, a evolução nunca era registrada (0/3); depois da mudança, 3/3.
+- **Testes de comportamento:**
+  - `stop-hook-ativo`: força um "Pronto." seco depois de editar; o hook bloqueia uma vez e o fim fica honesto.
+  - `compactacao-real`: sessão com trabalho pela metade, `/compact` de verdade e "continua"; o hook avisa a compactação e o Claude retoma pelo NORTE.md e pelo git.
+  - Executor com `steps` (vários pedidos na mesma sessão via `--resume`) e checagens `min_stop_blocks` e `compact_notice`.
+- **Rodada final:** 13/13 no Opus (US$ 4,49) e 13/13 no Sonnet (US$ 1,68). O hook Stop bloqueou só no `stop-hook-ativo` (1 vez em cada modelo) e em nenhum dos outros 24.
+
 ## 0.4.1 — 2026-11-02
 
 - capturing-the-vision: **v1 é o mínimo** (no máximo 4 itens; ideia do agente só entra se sem ela a promessa não existe). Quando o usuário delega ("decide o resto"), construir só o v1. No cenário de aceitação: v1 de 7 → 4 itens, app de 1.604 → ~440-480 linhas, custo US$ 3,42 → US$ 0,77-1,11 (3 rodadas).
