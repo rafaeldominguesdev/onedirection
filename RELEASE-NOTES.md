@@ -1,5 +1,11 @@
 # Release notes
 
+## 0.4.1 — 2026-11-02
+
+- capturing-the-vision: **v1 é o mínimo** (no máximo 4 itens; ideia do agente só entra se sem ela a promessa não existe). Quando o usuário delega ("decide o resto"), construir só o v1. No cenário de aceitação: v1 de 7 → 4 itens, app de 1.604 → ~440-480 linhas, custo US$ 3,42 → US$ 0,77-1,11 (3 rodadas).
+- capturing-the-vision: na criação, v1 todo `[ ]` e "Estado" com o que existe agora (uma rodada escreveu o NORTE.md já com o estado final esperado e se corrigiu em 2 passos).
+- Testes: checagens `section_max_items`, `max_file_lines` e `first_write_not_matches` no cenário de aceitação. Rodada completa 11/11 (US$ 3,65) + aceitação e projeto-novo 2x cada: 4/4.
+
 ## 0.4.0 — 2026-11-02
 
 Regras cobradas por código onde dá pra provar, e mais cobertura.
