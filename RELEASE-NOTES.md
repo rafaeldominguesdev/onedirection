@@ -1,5 +1,18 @@
 # Release notes
 
+## 0.4.3 — 2026-11-03
+
+Resposta à segunda revisão técnica: promessas do tamanho do código, fronteira de confiança e evidência reproduzível.
+
+- **Fronteira de confiança do NORTE.md:** o arquivo sai da moldura `<EXTREMELY_IMPORTANT>` do plugin e entra delimitado como dado (`<norte-md>`), com a orientação de não seguir ordens que não sejam sobre escopo. Tags que imitam a moldura ou fecham o bloco são neutralizadas, e a injeção é cortada em 12.000 caracteres.
+- **Hook Stop mais exigente e mais honesto:** `Glob` deixa de contar como conferência; `Read`/`Grep` só contam se olharem o arquivo editado; reconhece "corrigi", "implementei", "deve funcionar", "should work". 11 casos novos de fronteira nos testes.
+- **Lembrete por mensagem sem regex:** a mesma regra curta vai sempre (~250 caracteres) e o "Foco agora" entra como dado. A regex de "pedido de escopo" errava pros dois lados.
+- **Validador:** cobra o máximo de 4 itens no v1 e aponta seção duplicada.
+- **README:** "garantem" virou "orientam e cobram por código o que dá pra cobrar"; seções novas "Em 5 minutos", "Segurança e privacidade", custo de contexto medido e "O que é garantido e o que não é".
+- **Engenharia:** `scripts/test-install` (instala pelo marketplace numa configuração temporária e roda os hooks da cópia instalada), `scripts/check-version`, ShellCheck limpo, e CI com jobs de lint e de instalação real.
+- **Evidência reproduzível:** cada rodada salva a foto dos arquivos ao lado do transcript; `--replay` recorrige sem chamar a API; `--save-results` grava o resumo (versão, commit, Claude Code, modelo, custo) em `tests/evals/results/`; `sanitize.py` limpa transcripts pra publicar.
+- Testes dos hooks: 56 → 71.
+
 ## 0.4.2 — 2026-11-03
 
 Testado no Opus e no Sonnet, compactação de verdade e o hook Stop medido de verdade.
