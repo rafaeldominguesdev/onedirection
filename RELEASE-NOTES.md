@@ -1,10 +1,16 @@
 # Release notes
 
+## Não lançado
+
+- Testes de comportamento ao vivo da 0.4.6 (commit `80a5ba6`, Claude Code 2.1.317), uma rodada por modelo: Opus 13/13 (US$ 3,66) e Sonnet 12/13 (US$ 1,71). Resumos em `tests/evals/results/0.4.6-*.json`; transcripts limpos anexados à release v0.4.6.
+  - A falha do Sonnet: em `aceitacao-projeto-novo` (projeto novo, o usuário dispensa perguntas) ele não chamou `capturing-the-vision`. Escreveu o NORTE.md antes do código, mas no formato dele. "Sem login social" e "sem aplicativo mobile" ficaram em "Restrições firmes", não numa seção "## Não…", e o v1 saiu maior que o da skill (filtros, barra de progresso, tema, exportar/importar). O corretor está certo em reprovar, e não foi mudado. Não vem da mudança da 0.4.6: o texto injetado é o mesmo da 0.4.5, quando o Sonnet chamou a skill, e o hook Stop não bloqueou nesse cenário. É variação do modelo, numa rodada só.
+  - O hook Stop só bloqueou no cenário feito para isso (`stop-hook-ativo`), nos dois modelos. A regra nova (Bash trivial não conta) não chegou a ser exercitada ao vivo.
+
 ## 0.4.6 — 2026-11-04
 
 O hook Stop ficou mais exigente. Fora isso, só mudaram ferramentas de teste, CI e documentação. As skills não mudaram.
 
-**Não teve rodada ao vivo própria.** Os textos que os hooks injetam são os mesmos da 0.4.5, e a mudança está no hook Stop, que só decide se bloqueia. Ela foi medida pelo replay (nenhum modelo executado) das rodadas ao vivo da 0.4.5 com o corretor da 0.4.6: 13/13 com Opus e com Sonnet (`tests/evals/results/0.4.5-*-replay.json`). Não está medido como o modelo reage a um bloqueio que antes não acontecia.
+**Não teve rodada ao vivo própria na hora da release** (ela veio depois: ver "Não lançado"). Os textos que os hooks injetam são os mesmos da 0.4.5, e a mudança está no hook Stop, que só decide se bloqueia. Ela foi medida pelo replay (nenhum modelo executado) das rodadas ao vivo da 0.4.5 com o corretor da 0.4.6: 13/13 com Opus e com Sonnet (`tests/evals/results/0.4.5-*-replay.json`). Não está medido como o modelo reage a um bloqueio que antes não acontecia.
 
 - Hook Stop: um `Bash` feito só de comandos que não conferem nada (`ls`, `pwd`, `echo`, `which`, `mkdir`, `cp`, `rm`, `git status`, `git log`, `--version`, `cat` de outro arquivo) não conta mais como conferência depois de uma edição. Se qualquer parte do comando for outra coisa, ele conta, então na dúvida o hook não bloqueia. O corretor dos testes de comportamento usa a mesma regra. No replay offline das rodadas ao vivo da 0.4.4 e da 0.4.5, os quatro resultados continuam 13/13: os 9 comandos que passaram a ser ignorados (`which node`, `node --version`, `mktemp`, `cp`, `rm`, `git status`, `ls`) sempre vinham junto com uma conferência de verdade. Testes dos hooks: 117 → 142.
 - `scripts/check-all`: etapa pulada por falta de ferramenta não sai mais como "tudo passou", e sim como "VALIDAÇÃO INCOMPLETA", com a lista do que não rodou.
