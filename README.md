@@ -139,7 +139,7 @@ Se o Claude parecer perdido — repetindo trabalho, inventando nome de arquivo, 
   Na compactação, em projeto, manda usar `recovering-focus`.
 - **UserPromptSubmit** — só em projetos com `NORTE.md`: uma regra curta (registrar ideia nova, conflito → guarda, prova antes de "pronto") e a seção "Foco agora", delimitada como dado do arquivo e limitada a 1.200 caracteres.
 - **Stop** — cobra uma regra mínima: se o Claude editou um arquivo que não é Markdown/texto, não conferiu nada **depois da última edição** e diz que terminou sem admitir que não verificou, a resposta volta pra ele **uma vez** pra conferir ou declarar "Não verifiquei: …".
-  - Conta como conferência: um comando (`Bash`), a skill `verifying-before-done`, ou `Read`/`Grep` que olhe o arquivo editado. `Glob` não conta.
+  - Conta como conferência: um comando (`Bash`), a skill `verifying-before-done`, ou `Read`/`Grep` que olhe o arquivo editado. `Glob` não conta, nem um `Bash` feito só de comandos que não provam nada: `ls`, `pwd`, `echo`, `which`, `mkdir`, `cp`, `rm`, `git status`, `git log`, `--version` e `cat` de outro arquivo. Se qualquer parte do comando for outra coisa (`git diff`, `npm test`, `node …`), ele conta.
   - É uma heurística por palavras: não sabe se a verificação provou o que foi afirmado, e frases fora da lista passam.
   - Precisa de `python3`; sem ele, esse hook não faz nada.
 
@@ -172,7 +172,7 @@ Três níveis:
 
 `scripts/check-all` roda `bash -n` em todos os scripts (também no bash 3.2 do macOS), `py_compile`, valida todo JSON, ShellCheck, `scripts/check-version`, `tests/evals/check_results.py`, `bash tests/hooks/test-hooks.sh`, `claude plugin validate .` e `git diff --check`. Se alguma etapa for pulada por falta de ferramenta, o resumo diz "VALIDAÇÃO INCOMPLETA" e lista o que não rodou ("tudo passou" só aparece quando nada foi pulado); `CHECK_ALL_STRICT=1` transforma "ferramenta ausente" em falha.
 
-`tests/hooks/test-hooks.sh` (117 casos) cobre os três níveis de injeção, a compactação, o "Foco agora", o hook Stop, o validador e casos adversariais: tags que tentam fechar o bloco de dados, caracteres de controle, NORTE.md de 30 MB, link simbólico pra fora do repositório, FIFO, texto com `$( )` e crases (a suíte confere que nada é executado) e um lint que proíbe `&` no substituto de `${var//…/…}`. O placar é testado: uma falha proposital dentro de um pipe tem que derrubar a suíte.
+`tests/hooks/test-hooks.sh` (142 casos) cobre os três níveis de injeção, a compactação, o "Foco agora", o hook Stop, o validador e casos adversariais: tags que tentam fechar o bloco de dados, caracteres de controle, NORTE.md de 30 MB, link simbólico pra fora do repositório, FIFO, texto com `$( )` e crases (a suíte confere que nada é executado) e um lint que proíbe `&` no substituto de `${var//…/…}`. O placar é testado: uma falha proposital dentro de um pipe tem que derrubar a suíte.
 
 `scripts/test-install` usa uma configuração do Claude Code temporária (`CLAUDE_CONFIG_DIR`), sem mexer na sua. Ele adiciona este repositório como marketplace, instala o plugin, confere versão, skills e hooks, confere que a cópia instalada fica fora do checkout e é igual a ele, e roda os hooks dessa cópia. Se o marketplace ou a instalação falharem, ele para e mostra o erro do `claude` (código 2).
 
