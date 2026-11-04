@@ -216,13 +216,13 @@ Os resumos ficam em [`tests/evals/results/`](tests/evals/results/), com versão 
 | 0.4.3 | 12/13 | 11/13 | ao vivo; as três falhas viraram as correções da 0.4.4 |
 | 0.4.4 | 12/13 | 12/13 | ao vivo; as duas falhas eram do corretor (explicado nas notas da versão) |
 | 0.4.4 | 13/13 | 13/13 | replay (nenhum modelo executado) com o corretor ajustado |
-| 0.4.5 | — | — | **não rodado ao vivo.** Replay dos transcripts da 0.4.4 com o corretor da 0.4.5: 13/13 e 13/13 |
+| 0.4.5 | 13/13 | 13/13 | ao vivo em 2026-11-04 (commit `bf38a61`, Claude Code 2.1.317), uma rodada por modelo, US$ 3,78 + US$ 1,68 |
 
-**Transcripts:** os da rodada ao vivo da 0.4.4 (limpos com `sanitize.py`) estão anexados à [release v0.4.5](https://github.com/rafaeldominguesdev/onedirection/releases/tag/v0.4.5), um arquivo por modelo. Pra refazer o replay sem gastar nada:
+**Transcripts:** os das rodadas ao vivo da 0.4.4 e da 0.4.5 (limpos com `sanitize.py`) estão anexados à [release v0.4.5](https://github.com/rafaeldominguesdev/onedirection/releases/tag/v0.4.5), um arquivo por versão e modelo, com `SHA256SUMS`. Pra refazer o replay sem gastar nada:
 
 ```bash
-mkdir -p /tmp/od-0.4.4 && tar -xzf transcripts-0.4.4-sonnet.tar.gz -C /tmp/od-0.4.4
-python3 tests/evals/run.py --replay /tmp/od-0.4.4/sonnet --source-results tests/evals/results/0.4.4-sonnet.json
+mkdir -p /tmp/od-0.4.5 && tar -xzf transcripts-0.4.5-sonnet.tar.gz -C /tmp/od-0.4.5
+python3 tests/evals/run.py --replay /tmp/od-0.4.5/sonnet --source-results tests/evals/results/0.4.5-sonnet.json
 ```
 
 Os da 0.4.3 não foram publicados.
@@ -293,8 +293,8 @@ Os números de skill vêm de `claude plugin details onedirection@onedirection`, 
 - **A neutralização troca `<` e `>` na cópia injetada.** O modelo vê `‹ ›` no lugar (e é avisado disso). O arquivo em disco não muda.
 - **`NORTE.md` maior que 12.000 bytes:** só o começo entra no contexto, e um "Foco agora" que fique depois do corte não entra no lembrete por mensagem.
 - **Link simbólico:** um `NORTE.md` que é link (mesmo para dentro do repositório) não é carregado automaticamente.
-- **Só os transcripts da 0.4.4 estão publicados** (na release v0.4.5); os da 0.4.3 não, então o replay da 0.4.3 não é reproduzível por terceiros.
-- **A versão 0.4.5 não teve rodada ao vivo** dos testes de comportamento. Os hooks mudaram pouco no texto injetado, e as skills não mudaram.
+- **Só os transcripts da 0.4.4 e da 0.4.5 estão publicados** (na release v0.4.5); os da 0.4.3 não, então o replay da 0.4.3 não é reproduzível por terceiros.
+- **As rodadas ao vivo rodam na máquina do autor**, com o CLAUDE.md global dele e outros plugins ativos (campo `environment` nos resumos). Numa configuração limpa o resultado pode ser outro.
 - **Windows não é suportado**, e o uso junto com a superpowers não foi testado.
 
 ## Contribuindo

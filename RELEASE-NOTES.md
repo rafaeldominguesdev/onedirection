@@ -7,6 +7,7 @@ Só ferramentas de teste e CI; o plugin (hooks e skills) não mudou desde a 0.4.
 - `scripts/check-all`: etapa pulada por falta de ferramenta não sai mais como "tudo passou", e sim como "VALIDAÇÃO INCOMPLETA", com a lista do que não rodou.
 - CI: a instalação real e o `claude plugin validate` da 0.4.5 rodaram na Claude Code **2.1.197**, não na versão atual, porque a CI usava Node 20 e o pacote atual pede Node ≥ 22. Agora a CI usa Node 22 (na primeira rodada, 2.1.318) e falha se o `claude` executado não for o que o npm instalou.
 - README: o custo fixo das skills aparece como ~466 a ~759 tokens. O `claude plugin details` dá ~466 numa configuração limpa (caracteres ÷ 4) e ~759 numa configuração com login. Os números dos hooks, estimados com ÷ 4, provavelmente estão baixos na mesma proporção.
+- Testes de comportamento ao vivo da 0.4.5 (commit `bf38a61`, Claude Code 2.1.317): Opus 13/13 (US$ 3,78) e Sonnet 13/13 (US$ 1,68), uma rodada por modelo. Resumos em `tests/evals/results/0.4.5-*.json`; transcripts limpos anexados à release v0.4.5.
 
 ## 0.4.5 — 2026-11-03
 
