@@ -57,6 +57,15 @@ fi
 step "git diff --check (espaço sobrando, marcador de conflito)" git diff --check HEAD
 
 echo
-[ ${#skipped[@]} -gt 0 ] && echo "pulados: ${skipped[*]}"
-if [ ${#failed[@]} -gt 0 ]; then echo "falharam: ${failed[*]}"; exit 1; fi
-echo "tudo passou"
+if [ ${#failed[@]} -gt 0 ]; then
+  echo "falharam: ${failed[*]}"
+  [ ${#skipped[@]} -gt 0 ] && echo "pulados: ${skipped[*]}"
+  exit 1
+fi
+# Etapa pulada não é etapa que passou: o resumo não pode dizer "tudo passou" nesse caso.
+if [ ${#skipped[@]} -gt 0 ]; then
+  echo "VALIDAÇÃO INCOMPLETA: o que rodou passou, mas ${#skipped[@]} etapa(s) não rodaram: ${skipped[*]}"
+  echo "instale o que falta, ou rode com CHECK_ALL_STRICT=1 pra tratar como falha"
+  exit 0
+fi
+echo "tudo passou (nenhuma etapa pulada)"
