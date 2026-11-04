@@ -170,7 +170,7 @@ Três níveis:
 | Instalação de verdade | `scripts/test-install` | grátis, sem API | a CLI `claude` (sai com 3 se ela não existir) |
 | Comportamento | `python3 tests/evals/run.py` | ~US$ 0,20–0,80 por cenário | a CLI `claude` com login ou `ANTHROPIC_API_KEY` |
 
-`scripts/check-all` roda `bash -n` em todos os scripts (também no bash 3.2 do macOS), `py_compile`, valida todo JSON, ShellCheck, `scripts/check-version`, `tests/evals/check_results.py`, `bash tests/hooks/test-hooks.sh`, `claude plugin validate .` e `git diff --check`. `CHECK_ALL_STRICT=1` transforma "ferramenta ausente" em falha.
+`scripts/check-all` roda `bash -n` em todos os scripts (também no bash 3.2 do macOS), `py_compile`, valida todo JSON, ShellCheck, `scripts/check-version`, `tests/evals/check_results.py`, `bash tests/hooks/test-hooks.sh`, `claude plugin validate .` e `git diff --check`. Se alguma etapa for pulada por falta de ferramenta, o resumo diz "VALIDAÇÃO INCOMPLETA" e lista o que não rodou ("tudo passou" só aparece quando nada foi pulado); `CHECK_ALL_STRICT=1` transforma "ferramenta ausente" em falha.
 
 `tests/hooks/test-hooks.sh` (117 casos) cobre os três níveis de injeção, a compactação, o "Foco agora", o hook Stop, o validador e casos adversariais: tags que tentam fechar o bloco de dados, caracteres de controle, NORTE.md de 30 MB, link simbólico pra fora do repositório, FIFO, texto com `$( )` e crases (a suíte confere que nada é executado) e um lint que proíbe `&` no substituto de `${var//…/…}`. O placar é testado: uma falha proposital dentro de um pipe tem que derrubar a suíte.
 
@@ -247,7 +247,7 @@ No GitHub, a cada push, rodam os testes dos hooks no Ubuntu (bash 5) e no macOS 
 
 | Tema | Situação |
 |---|---|
-| Claude Code | Testes de comportamento na 2.1.317 (lida dos transcripts); instalação e `plugin validate` testados na 2.1.317. Usa hooks de plugin `SessionStart`, `UserPromptSubmit` e `Stop` |
+| Claude Code | Testes de comportamento na 2.1.317 (lida dos transcripts). Instalação e `plugin validate`: localmente na 2.1.317, e na CI a cada push com a versão atual do npm (2.1.318 em 2026-11-04; o job falha se o `claude` executado não for o que o npm instalou). Usa hooks de plugin `SessionStart`, `UserPromptSubmit` e `Stop` |
 | Modelos | Testes de comportamento rodados no Opus e no Sonnet. Outros modelos: não testados |
 | Sistema | macOS (bash 3.2 do sistema ou mais novo) e Linux (bash 5 na CI). **Windows não é suportado** |
 | `python3` | Opcional pro plugin: só o hook de fim de resposta usa; sem ele, esse hook fica desligado e o resto funciona. Obrigatório pros testes |
