@@ -217,13 +217,13 @@ Os resumos ficam em [`tests/evals/results/`](tests/evals/results/), com versão 
 | 0.4.4 | 12/13 | 12/13 | ao vivo; as duas falhas eram do corretor (explicado nas notas da versão) |
 | 0.4.4 | 13/13 | 13/13 | replay (nenhum modelo executado) com o corretor ajustado |
 | 0.4.5 | 13/13 | 13/13 | ao vivo em 2026-11-04 (commit `bf38a61`, Claude Code 2.1.317), uma rodada por modelo, US$ 3,78 + US$ 1,68 |
-| 0.4.6 | — | — | **não rodado ao vivo.** Replay das rodadas ao vivo da 0.4.5 com o corretor da 0.4.6 (nenhum modelo executado): 13/13 e 13/13 |
+| 0.4.6 | 13/13 | 12/13 | ao vivo em 2026-11-04 (commit `80a5ba6`, Claude Code 2.1.317), uma rodada por modelo, US$ 3,66 + US$ 1,71. A falha: em `aceitacao-projeto-novo` o Sonnet não chamou a skill `capturing-the-vision`, e o NORTE.md saiu sem a seção de não-objetivos (detalhes nas notas) |
 
-**Transcripts:** os das rodadas ao vivo da 0.4.4 e da 0.4.5 (limpos com `sanitize.py`) estão anexados à [release v0.4.5](https://github.com/rafaeldominguesdev/onedirection/releases/tag/v0.4.5), um arquivo por versão e modelo, com `SHA256SUMS`. Pra refazer o replay sem gastar nada:
+**Transcripts:** os das rodadas ao vivo (limpos com `sanitize.py`) estão anexados às releases, um arquivo por versão e modelo, com `SHA256SUMS`: os da 0.4.4 e da 0.4.5 na [release v0.4.5](https://github.com/rafaeldominguesdev/onedirection/releases/tag/v0.4.5), e os da 0.4.6 na [release v0.4.6](https://github.com/rafaeldominguesdev/onedirection/releases/tag/v0.4.6). Pra refazer o replay sem gastar nada:
 
 ```bash
-mkdir -p /tmp/od-0.4.5 && tar -xzf transcripts-0.4.5-sonnet.tar.gz -C /tmp/od-0.4.5
-python3 tests/evals/run.py --replay /tmp/od-0.4.5/sonnet --source-results tests/evals/results/0.4.5-sonnet.json
+mkdir -p /tmp/od-0.4.6 && tar -xzf transcripts-0.4.6-sonnet.tar.gz -C /tmp/od-0.4.6
+python3 tests/evals/run.py --replay /tmp/od-0.4.6/sonnet --source-results tests/evals/results/0.4.6-sonnet.json
 ```
 
 Os da 0.4.3 não foram publicados.
@@ -294,9 +294,10 @@ Os números de skill vêm de `claude plugin details onedirection@onedirection`, 
 - **A neutralização troca `<` e `>` na cópia injetada.** O modelo vê `‹ ›` no lugar (e é avisado disso). O arquivo em disco não muda.
 - **`NORTE.md` maior que 12.000 bytes:** só o começo entra no contexto, e um "Foco agora" que fique depois do corte não entra no lembrete por mensagem.
 - **Link simbólico:** um `NORTE.md` que é link (mesmo para dentro do repositório) não é carregado automaticamente.
-- **Só os transcripts da 0.4.4 e da 0.4.5 estão publicados** (na release v0.4.5); os da 0.4.3 não, então o replay da 0.4.3 não é reproduzível por terceiros.
+- **Só os transcripts da 0.4.4, da 0.4.5 e da 0.4.6 estão publicados** (nas releases v0.4.5 e v0.4.6); os da 0.4.3 não, então o replay da 0.4.3 não é reproduzível por terceiros.
 - **As rodadas ao vivo rodam na máquina do autor**, com o CLAUDE.md global dele e outros plugins ativos (campo `environment` nos resumos). Numa configuração limpa o resultado pode ser outro.
-- **A 0.4.6 não teve rodada ao vivo.** Só o hook Stop mudou, e ele foi medido pelo replay das sessões da 0.4.5. Não está medido como o modelo reage a um bloqueio que antes não acontecia.
+- **Chamar a skill depende do modelo.** Na rodada ao vivo da 0.4.6, o Sonnet pulou `capturing-the-vision` num projeto novo e escreveu um NORTE.md no formato dele, mesmo com o mesmo texto injetado com que, na 0.4.5, ele chamou a skill. Foi uma rodada só, então a frequência disso não está medida.
+- **A regra nova do hook Stop não foi exercitada ao vivo.** Nas duas rodadas da 0.4.6 ele só bloqueou no cenário feito para isso (`stop-hook-ativo`). Não está medido como o modelo reage a um bloqueio por `ls` ou `git status`.
 - **Windows não é suportado**, e o uso junto com a superpowers não foi testado.
 
 ## Contribuindo
