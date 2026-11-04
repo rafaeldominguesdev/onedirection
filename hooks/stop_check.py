@@ -21,7 +21,6 @@ import sys
 EDIT_TOOLS = {"Edit", "Write", "MultiEdit", "NotebookEdit"}
 RUN_TOOLS = {"Bash"}            # comando: sempre conta como conferência
 LOOK_TOOLS = {"Read", "Grep"}   # leitura: só conta se olhar o arquivo editado
-CHECK_TOOLS = RUN_TOOLS | LOOK_TOOLS  # (usado pelo corretor dos testes)
 CLAIM = re.compile(
     r"\b(pront[oa]s?|feit[oa]s?|conclu[ií]d[oa]s?|finalizad[oa]s?|funcionando|corrigid[oa]s?|"
     r"resolvid[oa]s?|implementad[oa]s?|terminei|corrigi|resolvi|implementei|consertei|arrumei|"
@@ -44,10 +43,11 @@ def allow():
 
 
 def blocks(entry):
-    content = (entry.get("message") or {}).get("content")
+    msg = entry.get("message")
+    content = msg.get("content") if isinstance(msg, dict) else None
     if isinstance(content, str):
         return [{"type": "text", "text": content}]
-    return content if isinstance(content, list) else []
+    return [b for b in content if isinstance(b, dict)] if isinstance(content, list) else []
 
 
 def looks_at(name, inp, edited):
@@ -69,12 +69,42 @@ def is_user_prompt(entry):
     return has_text and not has_result
 
 
+def unverified_edit(steps):
+    """A regra, num lugar só (o hook e o corretor dos testes usam esta função).
+
+    steps: sequência de ("tool", nome, input) e ("text", texto, None), na ordem do turno.
+    Devolve (arquivo da última edição sem conferência depois dela, ou None; textos depois da última ferramenta).
+    """
+    last_edit, verified, final_text = None, False, []
+    for kind, name, inp in steps:
+        if kind == "tool":
+            inp = inp if isinstance(inp, dict) else {}
+            final_text = []
+            if name in EDIT_TOOLS:
+                path = str(inp.get("file_path") or inp.get("notebook_path") or "")
+                if not path.lower().endswith((".md", ".markdown", ".txt")):
+                    last_edit, verified = path, False
+            elif last_edit is not None and (
+                name in RUN_TOOLS
+                or (name in LOOK_TOOLS and looks_at(name, inp, last_edit))
+                or (name == "Skill" and "verifying-before-done" in str(inp.get("skill", "")))
+            ):
+                verified = True
+        elif kind == "text":
+            final_text.append(name or "")
+    return (None if verified else last_edit), final_text
+
+
+def claims_done_without_admitting(text):
+    return bool(CLAIM.search(text)) and not DISCLOSURE.search(text)
+
+
 def main():
     try:
         data = json.load(sys.stdin)
     except Exception:
         allow()
-    if data.get("stop_hook_active"):
+    if not isinstance(data, dict) or data.get("stop_hook_active"):
         allow()
 
     entries = []
@@ -82,50 +112,37 @@ def main():
         with open(data.get("transcript_path") or "", encoding="utf-8", errors="replace") as fh:
             for line in fh:
                 try:
-                    entries.append(json.loads(line))
+                    e = json.loads(line)
                 except json.JSONDecodeError:
                     continue
-    except OSError:
+                if isinstance(e, dict):
+                    entries.append(e)
+    except (OSError, TypeError, ValueError):
         allow()
 
     start = 0
     for i, e in enumerate(entries):
         if is_user_prompt(e):
             start = i + 1
-    turn = entries[start:]
 
-    last_edit, last_edit_file, verified_after = None, "", False
-    final_text_parts = []
-    pos = 0
-    for e in turn:
+    steps = []
+    for e in entries[start:]:
         if e.get("type") != "assistant":
             continue
         for b in blocks(e):
-            pos += 1
+            if not isinstance(b, dict):
+                continue
             if b.get("type") == "tool_use":
-                name = b.get("name", "")
-                inp = b.get("input") or {}
-                final_text_parts = []
-                if name in EDIT_TOOLS:
-                    path = str(inp.get("file_path") or inp.get("notebook_path") or "")
-                    if not path.lower().endswith((".md", ".markdown", ".txt")):
-                        last_edit, last_edit_file, verified_after = pos, path, False
-                elif last_edit is not None and (
-                    name in RUN_TOOLS
-                    or (name in LOOK_TOOLS and looks_at(name, inp, last_edit_file))
-                    or (name == "Skill" and "verifying-before-done" in str(inp.get("skill", "")))
-                ):
-                    verified_after = True
+                steps.append(("tool", b.get("name", ""), b.get("input")))
             elif b.get("type") == "text":
-                final_text_parts.append(b.get("text") or "")
+                steps.append(("text", b.get("text") or "", None))
 
-    final_text = data.get("last_assistant_message") or "\n".join(final_text_parts)
-    if last_edit is None or verified_after:
-        allow()
-    if not CLAIM.search(final_text) or DISCLOSURE.search(final_text):
+    edited, final_parts = unverified_edit(steps)
+    final_text = data.get("last_assistant_message") or "\n".join(final_parts)
+    if edited is None or not isinstance(final_text, str) or not claims_done_without_admitting(final_text):
         allow()
 
-    short = last_edit_file.rsplit("/", 1)[-1] or "o arquivo"
+    short = edited.rsplit("/", 1)[-1] or "o arquivo"
     print(json.dumps({
         "decision": "block",
         "reason": (
@@ -137,4 +154,9 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except SystemExit:
+        raise
+    except Exception:  # formato inesperado: este hook nunca pode travar o usuário
+        print("{}")
