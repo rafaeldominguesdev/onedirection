@@ -1,16 +1,27 @@
 {
+  "kind": "replay",
+  "model_executed": false,
+  "note": "replay: nenhum modelo foi executado; os transcripts da rodada original foram recorrigidos com o corretor de grader_commit",
   "plugin_version": "0.4.4",
-  "commit": "e561204",
-  "claude_code_version": "2.1.317 (Claude Code)",
-  "model": "opus",
+  "source_commit": "36a659b",
+  "source_results": "0.4.4-opus.json",
+  "model_requested": "opus",
   "date": "2026-11-03",
+  "graded_at": "2026-11-03",
+  "schema": 2,
+  "models": [
+    "claude-opus-5-5"
+  ],
+  "claude_code_versions": [
+    "2.1.317"
+  ],
   "repeat": 1,
   "passed": 13,
   "total": 13,
-  "total_cost_usd": 4.95,
-  "grading": "replay (sem API) de /private/tmp/claude-501/-Users-rafaeldomingues/e9a73301-d00e-4aff-833f-65c9a6bf0b11/scratchpad/r044-opus-limpo",
+  "original_cost_usd": 4.95,
   "grader_commit": "e561204",
   "environment": "máquina do autor: CLAUDE.md global e outros plugins ativos; --plugin-dir com a versão local",
+  "replay_cost_usd": 0.0,
   "scenarios": [
     {
       "name": "aceitacao-projeto-novo",

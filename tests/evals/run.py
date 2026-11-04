@@ -12,13 +12,16 @@ Uso:
     python3 tests/evals/run.py --repeat 3         # cada cenário 3 vezes (mede instabilidade)
     python3 tests/evals/run.py --save-results tests/evals/results/X.json   # grava o resumo da rodada
     python3 tests/evals/run.py --replay PASTA     # recorrige uma rodada salva, SEM chamar a API
+    python3 tests/evals/run.py --replay PASTA --source-results tests/evals/results/X.json --save-results Y.json
+                                                  # metadados da rodada original vêm do resumo ao vivo
 
 Variáveis:
     EVAL_MODEL  modelo (padrão: opus)
     EVAL_JOBS   sessões em paralelo (padrão: 4)
     EVAL_OUT    pasta dos transcripts (padrão: pasta temporária)
 
-Custo: cada sessão custa em torno de US$ 0,20 a 0,80.
+Custo: cada sessão custa em torno de US$ 0,20 a 0,80. O replay não chama o modelo e custa zero:
+ele só recorrige transcripts que já existem, com o corretor atual.
 """
 import argparse
 import concurrent.futures as cf
@@ -36,6 +39,7 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parent.parent
 sys.path.insert(0, str(ROOT / "hooks"))
+sys.dont_write_bytecode = True  # não deixa hooks/__pycache__ no plugin
 import stop_check  # noqa: E402  (mesma regra do hook de fim de resposta)
 FIXTURES = HERE / "fixtures"
 MODEL = os.environ.get("EVAL_MODEL", "opus")
@@ -123,7 +127,7 @@ def cleanup_session(work: Path):
 def parse(transcript: Path) -> dict:
     t = {"skills": [], "tools": [], "texts": [], "result": "", "cost": 0.0,
          "turns": 0, "plugin_paths": [], "context_chars": 0, "events": [], "stop_blocks": 0,
-         "compact_notice": False}
+         "compact_notice": False, "models": [], "cc_versions": []}
     for line in transcript.read_text(errors="replace").splitlines():
         try:
             e = json.loads(line)
@@ -131,6 +135,9 @@ def parse(transcript: Path) -> dict:
             continue
         kind, sub = e.get("type"), e.get("subtype")
         if kind == "system" and sub == "init":
+            for key, field in (("models", "model"), ("cc_versions", "claude_code_version")):
+                if e.get(field) and e[field] not in t[key]:
+                    t[key].append(e[field])
             t["plugin_paths"] = [p.get("path", "") for p in e.get("plugins", [])
                                  if isinstance(p, dict) and p.get("name") == "onedirection"]
         elif kind == "system" and sub == "hook_response" and e.get("hook_event") == "SessionStart":
@@ -274,6 +281,9 @@ def grade(sc: dict, t: dict, before: dict, after: dict) -> list:
     return fails
 
 
+EMPTY = {"cost": 0, "turns": 0, "skills": [], "context_chars": 0, "stop_blocks": 0, "models": [], "cc_versions": []}
+
+
 def run_one(sc: dict, rep: int, out_dir: Path) -> dict:
     tag = f"{sc['name']}" + (f"#{rep}" if rep else "")
     work = Path(tempfile.mkdtemp(prefix=f"od-{sc['name']}-"))
@@ -289,15 +299,15 @@ def run_one(sc: dict, rep: int, out_dir: Path) -> dict:
         t = parse(transcript)
         fails = grade(sc, t, before, after)
     except subprocess.TimeoutExpired:
-        t, fails = {"cost": 0, "turns": 0, "skills": [], "context_chars": 0, "stop_blocks": 0}, ["timeout"]
+        t, fails = dict(EMPTY), ["timeout"]
     except Exception as exc:  # erro do próprio executor
-        t, fails = {"cost": 0, "turns": 0, "skills": [], "context_chars": 0, "stop_blocks": 0}, [f"erro do executor: {exc!r}"]
+        t, fails = dict(EMPTY), [f"erro do executor: {exc!r}"]
     finally:
         cleanup_session(work.resolve())
         shutil.rmtree(work, ignore_errors=True)
     return {"tag": tag, "fails": fails, "cost": t["cost"], "turns": t["turns"],
             "skills": t["skills"], "ctx": t["context_chars"], "stops": t.get("stop_blocks", 0), "secs": int(time.time() - t0),
-            "transcript": str(transcript)}
+            "models": t["models"], "cc_versions": t["cc_versions"], "transcript": str(transcript)}
 
 
 def replay(spec: list, folder: Path) -> list:
@@ -316,37 +326,96 @@ def replay(spec: list, folder: Path) -> list:
         if not t["plugin_paths"]:
             fails.insert(0, "plugin não carregado")
         results.append({"tag": tr.stem, "fails": fails, "cost": t["cost"], "turns": t["turns"], "skills": t["skills"],
-                        "ctx": t["context_chars"], "stops": t["stop_blocks"], "secs": 0, "transcript": str(tr)})
+                        "ctx": t["context_chars"], "stops": t["stop_blocks"], "secs": 0, "transcript": str(tr),
+                        "models": t["models"], "cc_versions": t["cc_versions"]})
     return results
 
 
-def save_results(path: Path, results: list, repeat: int, grading: str = "ao vivo"):
-    def sh(*cmd):
-        try:
-            return subprocess.run(cmd, capture_output=True, text=True, cwd=ROOT).stdout.strip()
-        except OSError:
-            return ""
-    summary = {
+def sh(*cmd):
+    try:
+        return subprocess.run(cmd, capture_output=True, text=True, cwd=ROOT).stdout.strip()
+    except OSError:
+        return ""
+
+
+def git_state() -> str:
+    """Commit curto do plugin, com "-dirty" se a árvore tinha mudanças: um commit limpo é o que dá pra reproduzir."""
+    commit = sh("git", "rev-parse", "--short", "HEAD")
+    dirty = sh("git", "status", "--porcelain", "--untracked-files=no")
+    return f"{commit}-dirty" if commit and dirty else commit
+
+
+def seen(results: list, key: str) -> list:
+    return sorted({x for r in results for x in r.get(key, [])})
+
+
+def write_run_meta(out_dir: Path):
+    """Foto da rodada ao vivo ao lado dos transcripts: o replay lê daqui de onde os transcripts vieram."""
+    meta = {
         "plugin_version": json.loads((ROOT / ".claude-plugin/plugin.json").read_text())["version"],
-        "commit": sh("git", "rev-parse", "--short", "HEAD"),
-        "claude_code_version": sh("claude", "--version"),
-        "model": MODEL,
+        "source_commit": git_state(),
+        "model_requested": MODEL,
         "date": time.strftime("%Y-%m-%d"),
+    }
+    (out_dir / "run.json").write_text(json.dumps(meta, indent=2, ensure_ascii=False) + "\n")
+
+
+def save_results(path: Path, results: list, repeat: int, replay_of=None):
+    """Grava o resumo. Ao vivo: o modelo rodou agora. Replay: nenhum modelo rodou; só o corretor."""
+    grader = git_state()
+    scenarios = [{"name": r["tag"], "pass": not r["fails"], "fails": r["fails"], "cost_usd": round(r["cost"], 2),
+                  "seconds": r["secs"], "stop_blocks": r["stops"],
+                  "skills": [x if x.startswith("onedirection:") else "<skill de fora do onedirection>" for x in r["skills"]]}
+                 for r in sorted(results, key=lambda x: x["tag"])]
+    common = {
+        "schema": 2,
+        "models": seen(results, "models"),  # do init de cada transcript, não da variável de ambiente
+        "claude_code_versions": seen(results, "cc_versions"),
         "repeat": repeat,
         "passed": sum(1 for r in results if not r["fails"]),
         "total": len(results),
-        "total_cost_usd": round(sum(r["cost"] for r in results), 2),
-        "grading": grading,
-        "grader_commit": sh("git", "rev-parse", "--short", "HEAD"),
+        "original_cost_usd": round(sum(r["cost"] for r in results), 2),
+        "grader_commit": grader,
         "environment": "máquina do autor: CLAUDE.md global e outros plugins ativos; --plugin-dir com a versão local",
-        "scenarios": [{"name": r["tag"], "pass": not r["fails"], "fails": r["fails"], "cost_usd": round(r["cost"], 2),
-                       "seconds": r["secs"], "stop_blocks": r["stops"],
-                       "skills": [x if x.startswith("onedirection:") else "<skill de fora do onedirection>" for x in r["skills"]]}
-                      for r in sorted(results, key=lambda x: x["tag"])],
     }
+    if replay_of is None:
+        summary = {"kind": "live", "model_executed": True,
+                   "plugin_version": json.loads((ROOT / ".claude-plugin/plugin.json").read_text())["version"],
+                   "source_commit": grader, "model_requested": MODEL, "date": time.strftime("%Y-%m-%d"),
+                   **common, "scenarios": scenarios}
+    else:
+        summary = {"kind": "replay", "model_executed": False,
+                   "note": "replay: nenhum modelo foi executado; os transcripts da rodada original foram recorrigidos com o corretor de grader_commit",
+                   "plugin_version": replay_of.get("plugin_version"),
+                   "source_commit": replay_of.get("source_commit"),
+                   "source_results": replay_of.get("source_results"),
+                   "model_requested": replay_of.get("model_requested"),
+                   "date": replay_of.get("date"),
+                   "graded_at": time.strftime("%Y-%m-%d"),
+                   **common, "replay_cost_usd": 0.0,
+                   "scenarios": scenarios}
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(summary, indent=2, ensure_ascii=False) + "\n")
     print(f"resumo gravado em {path}")
+
+
+def replay_source(folder: Path, source_results) -> dict:
+    """De onde vieram os transcripts: run.json da pasta, ou o resumo ao vivo indicado. Nunca inventa."""
+    meta = {"plugin_version": None, "source_commit": None, "model_requested": None, "date": None, "source_results": None}
+    run_json = folder / "run.json"
+    if run_json.exists():
+        meta.update({k: v for k, v in json.loads(run_json.read_text()).items() if k in meta})
+    if source_results:
+        live = json.loads(Path(source_results).read_text())
+        meta.update({"plugin_version": live.get("plugin_version"),
+                     "source_commit": live.get("source_commit") or live.get("commit"),
+                     "model_requested": live.get("model_requested") or live.get("model"),
+                     "date": live.get("date"),
+                     "source_results": Path(source_results).name})
+    missing = [k for k in ("plugin_version", "source_commit") if not meta[k]]
+    if missing:
+        print(f"aviso: sem run.json nem --source-results; {missing} ficam vazios no resumo", file=sys.stderr)
+    return meta
 
 
 def main():
@@ -355,6 +424,8 @@ def main():
     ap.add_argument("--repeat", type=int, default=1)
     ap.add_argument("--replay", metavar="PASTA", help="recorrige transcripts salvos, sem chamar a API")
     ap.add_argument("--save-results", metavar="ARQUIVO", help="grava o resumo da rodada em JSON")
+    ap.add_argument("--source-results", metavar="ARQUIVO",
+                    help="no replay: resumo da rodada ao vivo de onde os transcripts vieram (versão, commit, modelo)")
     args = ap.parse_args()
 
     spec = json.loads((HERE / "scenarios.json").read_text())["scenarios"]
@@ -371,13 +442,15 @@ def main():
             for f in r["fails"]:
                 print(f"        - {f}")
         passed = sum(1 for r in results if not r["fails"])
-        print(f"\nreplay: {passed}/{len(results)} passaram (sem chamar a API)")
+        print(f"\nreplay: {passed}/{len(results)} passaram (nenhum modelo executado; só o corretor rodou de novo)")
         if args.save_results:
-            save_results(Path(args.save_results), results, args.repeat, grading=f"replay (sem API) de {args.replay}")
+            save_results(Path(args.save_results), results, args.repeat,
+                         replay_of=replay_source(Path(args.replay), args.source_results))
         sys.exit(0 if results and passed == len(results) else 1)
 
     out_dir = Path(os.environ.get("EVAL_OUT") or tempfile.mkdtemp(prefix="onedirection-evals-"))
     out_dir.mkdir(parents=True, exist_ok=True)
+    write_run_meta(out_dir)
     jobs = [(s, r if args.repeat > 1 else 0) for s in spec for r in range(1, args.repeat + 1)]
     print(f"onedirection evals: {len(jobs)} sessões, modelo {MODEL}, {JOBS} em paralelo")
     print(f"plugin: {ROOT}\ntranscripts: {out_dir}\n")
