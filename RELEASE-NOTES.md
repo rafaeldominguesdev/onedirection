@@ -1,8 +1,10 @@
 # Release notes
 
-## Não lançado
+## 0.4.6 — 2026-11-04
 
-O hook Stop ficou mais exigente. Fora isso, só mudaram ferramentas de teste, CI e documentação.
+O hook Stop ficou mais exigente. Fora isso, só mudaram ferramentas de teste, CI e documentação. As skills não mudaram.
+
+**Não teve rodada ao vivo própria.** Os textos que os hooks injetam são os mesmos da 0.4.5, e a mudança está no hook Stop, que só decide se bloqueia. Ela foi medida pelo replay (nenhum modelo executado) das rodadas ao vivo da 0.4.5 com o corretor da 0.4.6: 13/13 com Opus e com Sonnet (`tests/evals/results/0.4.5-*-replay.json`). Não está medido como o modelo reage a um bloqueio que antes não acontecia.
 
 - Hook Stop: um `Bash` feito só de comandos que não conferem nada (`ls`, `pwd`, `echo`, `which`, `mkdir`, `cp`, `rm`, `git status`, `git log`, `--version`, `cat` de outro arquivo) não conta mais como conferência depois de uma edição. Se qualquer parte do comando for outra coisa, ele conta, então na dúvida o hook não bloqueia. O corretor dos testes de comportamento usa a mesma regra. No replay offline das rodadas ao vivo da 0.4.4 e da 0.4.5, os quatro resultados continuam 13/13: os 9 comandos que passaram a ser ignorados (`which node`, `node --version`, `mktemp`, `cp`, `rm`, `git status`, `ls`) sempre vinham junto com uma conferência de verdade. Testes dos hooks: 117 → 142.
 - `scripts/check-all`: etapa pulada por falta de ferramenta não sai mais como "tudo passou", e sim como "VALIDAÇÃO INCOMPLETA", com a lista do que não rodou.

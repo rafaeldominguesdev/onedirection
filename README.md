@@ -217,6 +217,7 @@ Os resumos ficam em [`tests/evals/results/`](tests/evals/results/), com versão 
 | 0.4.4 | 12/13 | 12/13 | ao vivo; as duas falhas eram do corretor (explicado nas notas da versão) |
 | 0.4.4 | 13/13 | 13/13 | replay (nenhum modelo executado) com o corretor ajustado |
 | 0.4.5 | 13/13 | 13/13 | ao vivo em 2026-11-04 (commit `bf38a61`, Claude Code 2.1.317), uma rodada por modelo, US$ 3,78 + US$ 1,68 |
+| 0.4.6 | — | — | **não rodado ao vivo.** Replay das rodadas ao vivo da 0.4.5 com o corretor da 0.4.6 (nenhum modelo executado): 13/13 e 13/13 |
 
 **Transcripts:** os das rodadas ao vivo da 0.4.4 e da 0.4.5 (limpos com `sanitize.py`) estão anexados à [release v0.4.5](https://github.com/rafaeldominguesdev/onedirection/releases/tag/v0.4.5), um arquivo por versão e modelo, com `SHA256SUMS`. Pra refazer o replay sem gastar nada:
 
@@ -295,6 +296,7 @@ Os números de skill vêm de `claude plugin details onedirection@onedirection`, 
 - **Link simbólico:** um `NORTE.md` que é link (mesmo para dentro do repositório) não é carregado automaticamente.
 - **Só os transcripts da 0.4.4 e da 0.4.5 estão publicados** (na release v0.4.5); os da 0.4.3 não, então o replay da 0.4.3 não é reproduzível por terceiros.
 - **As rodadas ao vivo rodam na máquina do autor**, com o CLAUDE.md global dele e outros plugins ativos (campo `environment` nos resumos). Numa configuração limpa o resultado pode ser outro.
+- **A 0.4.6 não teve rodada ao vivo.** Só o hook Stop mudou, e ele foi medido pelo replay das sessões da 0.4.5. Não está medido como o modelo reage a um bloqueio que antes não acontecia.
 - **Windows não é suportado**, e o uso junto com a superpowers não foi testado.
 
 ## Contribuindo
