@@ -97,6 +97,9 @@ def main():
         if files.exists():
             (dst / files.name).write_text(json.dumps(clean(json.loads(files.read_text())), ensure_ascii=False))
         n += 1
+    run_json = src / "run.json"  # de onde a rodada veio (versão, commit, modelo): o replay precisa disso
+    if run_json.exists():
+        (dst / "run.json").write_text(json.dumps(clean(json.loads(run_json.read_text())), indent=2, ensure_ascii=False) + "\n")
     print(f"{n} transcripts limpos em {dst}")
 
 

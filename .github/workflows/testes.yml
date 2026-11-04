@@ -4,6 +4,9 @@ on:
   push:
   pull_request:
 
+permissions:
+  contents: read
+
 jobs:
   hooks:
     name: hooks (${{ matrix.os }})
@@ -14,6 +17,8 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v5
+      - name: Versão do bash
+        run: bash --version | head -1
       - name: Testes dos hooks e da estrutura
         run: bash tests/hooks/test-hooks.sh
       - name: Hooks também no bash do sistema (3.2 no macOS)
@@ -23,18 +28,15 @@ jobs:
         run: scripts/validate-norte tests/evals/fixtures/estudai/NORTE.md
 
   lint:
-    name: lint (bash, python, shellcheck, versão)
+    name: lint e checagens baratas (bash -n, py_compile, JSON, shellcheck, versão, resultados)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
-      - name: Sintaxe dos scripts bash
-        run: for f in hooks/session-start hooks/user-prompt-submit hooks/stop hooks/lib.sh scripts/* tests/hooks/test-hooks.sh; do bash -n "$f"; done
-      - name: Python compila
-        run: python3 -m py_compile hooks/stop_check.py tests/evals/run.py tests/evals/sanitize.py
-      - name: ShellCheck
-        run: shellcheck -x -P SCRIPTDIR -s bash hooks/session-start hooks/user-prompt-submit hooks/stop hooks/lib.sh scripts/* tests/hooks/test-hooks.sh
-      - name: Versão igual nos manifestos e nas notas
-        run: scripts/check-version
+      - name: Versão do bash e shellcheck presente (falha se faltar)
+        run: bash --version | head -1 && shellcheck --version | sed -n 2p
+      - name: scripts/check-all
+        # Neste job só o "claude plugin validate" é pulado (não há CLI aqui; ele tem job próprio abaixo).
+        run: scripts/check-all
 
   install:
     name: instalação real pelo marketplace

@@ -1,0 +1,62 @@
+#!/usr/bin/env bash
+# shellcheck disable=SC2016  # os bash -c '...' recebem os arquivos como argumentos; o $ é do bash de dentro
+# Todos os testes locais baratos, numa tacada só. Não usa rede nem chama modelo.
+#   scripts/check-all              # ferramenta opcional ausente (shellcheck, claude) = PULADO, com aviso
+#   CHECK_ALL_STRICT=1 scripts/check-all   # ferramenta ausente = falha (é assim na CI)
+# Saída 0 = tudo passou; 1 = algo falhou; 3 = falta python3 (obrigatório).
+set -uo pipefail
+case "$0" in */*) ROOT="$(cd "${0%/*}/.." && pwd)" ;; *) ROOT="$(cd .. && pwd)" ;; esac
+cd "$ROOT" || exit 1
+STRICT="${CHECK_ALL_STRICT:-0}"
+TMP="$(mktemp -d)"; trap 'rm -rf "$TMP"' EXIT
+export PYTHONDONTWRITEBYTECODE=1 PYTHONPYCACHEPREFIX="$TMP/pycache"
+
+if ! command -v python3 >/dev/null 2>&1; then echo "ERRO: python3 é obrigatório pra estes testes" >&2; exit 3; fi
+
+failed=() skipped=()
+step() { # nome, comando...
+  local name="$1"; shift
+  if "$@" >"$TMP/out" 2>&1; then echo "ok    $name"; else echo "FAIL  $name"; sed 's/^/      | /' "$TMP/out" | tail -30; failed+=("$name"); fi
+}
+skip() { # nome, motivo
+  if [ "$STRICT" = 1 ]; then echo "FAIL  $1 ($2)"; failed+=("$1"); else echo "PULO  $1 ($2)"; skipped+=("$1"); fi
+}
+
+BASH_FILES=(hooks/session-start hooks/user-prompt-submit hooks/stop hooks/lib.sh scripts/* tests/hooks/test-hooks.sh)
+PY_FILES=(hooks/stop_check.py tests/evals/*.py)
+
+step "bash -n (${#BASH_FILES[@]} scripts)" bash -c 'for f; do bash -n "$f" || exit 1; done' _ "${BASH_FILES[@]}"
+if [ -x /bin/bash ] && [ "$(/bin/bash -c 'echo ${BASH_VERSINFO[0]}')" = 3 ]; then
+  step "bash -n no bash 3.2 do sistema" /bin/bash -c 'for f; do /bin/bash -n "$f" || exit 1; done' _ "${BASH_FILES[@]}"
+fi
+step "python3 -m py_compile (${#PY_FILES[@]} arquivos, sem __pycache__ no repo)" python3 -m py_compile "${PY_FILES[@]}"
+step "todo JSON é válido" python3 -c '
+import json, pathlib, sys
+bad = []
+for p in sorted(pathlib.Path(".").rglob("*.json")):
+    if ".git" in p.parts: continue
+    try: json.loads(p.read_text())
+    except Exception as e: bad.append(f"{p}: {e}")
+print("\n".join(bad)); sys.exit(1 if bad else 0)'
+if command -v shellcheck >/dev/null 2>&1; then
+  step "shellcheck" shellcheck -x -P SCRIPTDIR -s bash "${BASH_FILES[@]}"
+else
+  skip "shellcheck" "não instalado"
+fi
+step "versão igual nos manifestos e nas notas" scripts/check-version
+step "resumos dos testes de comportamento coerentes" python3 tests/evals/check_results.py
+step "testes dos hooks (bash do PATH)" bash tests/hooks/test-hooks.sh
+if [ -x /bin/bash ] && [ "$(/bin/bash -c 'echo ${BASH_VERSINFO[0]}')" = 3 ] && [ "$(command -v bash)" != /bin/bash ]; then
+  step "testes dos hooks (bash 3.2 do sistema)" /bin/bash tests/hooks/test-hooks.sh
+fi
+if command -v claude >/dev/null 2>&1; then
+  step "claude plugin validate" claude plugin validate .
+else
+  skip "claude plugin validate" "CLI do Claude Code não instalada"
+fi
+step "git diff --check (espaço sobrando, marcador de conflito)" git diff --check HEAD
+
+echo
+[ ${#skipped[@]} -gt 0 ] && echo "pulados: ${skipped[*]}"
+if [ ${#failed[@]} -gt 0 ]; then echo "falharam: ${failed[*]}"; exit 1; fi
+echo "tudo passou"

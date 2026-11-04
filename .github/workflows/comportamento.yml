@@ -16,6 +16,9 @@ on:
         required: false
         default: "opus"
 
+permissions:
+  contents: read
+
 jobs:
   evals:
     runs-on: ubuntu-latest
@@ -30,10 +33,13 @@ jobs:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           EVAL_MODEL: ${{ inputs.modelo }}
           EVAL_OUT: evals-out
+          # A entrada vai por variável, nunca colada no script: texto digitado no formulário não vira comando.
+          CENARIOS: ${{ inputs.cenarios }}
         run: |
           git config --global user.email "eval@example.com"
           git config --global user.name "eval"
-          python3 tests/evals/run.py ${{ inputs.cenarios }}
+          # shellcheck disable=SC2086  # separar os nomes por espaço é o esperado
+          python3 tests/evals/run.py $CENARIOS
       - uses: actions/upload-artifact@v4
         if: always()
         with:

@@ -1,41 +1,122 @@
 #!/usr/bin/env bash
-# shellcheck disable=SC2015  # ok() só faz echo e nunca falha, então "A && ok || bad" é seguro aqui
+# shellcheck disable=SC2015  # ok() e bad() só fazem echo e nunca falham, então "A && ok || bad" é seguro aqui
 # Teste de instalação de verdade, numa configuração do Claude Code temporária (não mexe na sua):
 # adiciona este repositório como marketplace, instala o plugin, confere versão, skills e hooks,
-# e roda os hooks A PARTIR DA CÓPIA INSTALADA. Não chama a API.
+# confere que a cópia instalada é uma CÓPIA (fora do checkout) igual aos arquivos daqui, e roda
+# os hooks A PARTIR DESSA CÓPIA, de dentro de uma pasta temporária. Não chama a API.
+#
+# Precisa da CLI do Claude Code (`claude`) no PATH: marketplace, instalação, `plugin list` e
+# `plugin details` são comandos dela. Precisa de python3 pra ler o JSON. Não precisa de login.
+#
+# Códigos de saída:
+#   0  tudo certo
+#   1  alguma conferência falhou (listadas no fim)
+#   2  marketplace ou instalação falhou: o resto não roda (o erro do claude é mostrado)
+#   3  `claude` não está instalado ou não está no PATH
+#   4  python3 não está instalado
 set -euo pipefail
 case "$0" in */*) ROOT="$(cd "${0%/*}/.." && pwd)" ;; *) ROOT="$(cd .. && pwd)" ;; esac
+
+if ! command -v claude >/dev/null 2>&1; then
+  echo "ERRO: a CLI do Claude Code (claude) não foi encontrada no PATH." >&2
+  echo "      Este teste instala o plugin com ela. Instale com: npm install -g @anthropic-ai/claude-code" >&2
+  echo "      (os testes que não precisam dela: bash tests/hooks/test-hooks.sh e scripts/check-all)" >&2
+  exit 3
+fi
+if ! command -v python3 >/dev/null 2>&1; then
+  echo "ERRO: python3 não encontrado; ele é usado pra ler o JSON de 'claude plugin list --json'." >&2
+  exit 4
+fi
+
 TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
 export CLAUDE_CONFIG_DIR="$TMP/config"
-fail=0
+export PYTHONDONTWRITEBYTECODE=1
+fails=0
 ok() { echo "ok   $1"; }
-bad() { echo "FAIL $1"; fail=1; }
+bad() { echo "FAIL $1"; fails=$((fails + 1)); }
 
-want="$(python3 -c "import json;print(json.load(open('$ROOT/.claude-plugin/plugin.json'))['version'])")"
-claude plugin marketplace add "$ROOT" >/dev/null 2>&1 && ok "marketplace adicionado" || bad "marketplace adicionado"
-claude plugin install onedirection@onedirection >/dev/null 2>&1 && ok "plugin instalado" || bad "plugin instalado"
+# step NOME COMANDO...: roda; se falhar, mostra o stderr e para (não adianta conferir uma instalação que não aconteceu).
+step() {
+  local name="$1"; shift
+  if "$@" >"$TMP/out.txt" 2>"$TMP/err.txt"; then
+    ok "$name"
+  else
+    local code=$?
+    echo "FAIL $name (claude saiu com $code)"
+    sed 's/^/     | /' "$TMP/err.txt" "$TMP/out.txt" | tail -20
+    exit 2
+  fi
+}
 
-info="$(claude plugin list --json 2>/dev/null)"
-read -r version enabled install_path < <(python3 -c "
-import json,sys
-p=[x for x in json.loads(sys.stdin.read()) if x['id']=='onedirection@onedirection']
-print(p[0]['version'], p[0]['enabled'], p[0]['installPath']) if p else print('- - -')" <<< "$info")
+echo "claude: $(claude --version 2>/dev/null || echo '?')"
+want="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["version"])' "$ROOT/.claude-plugin/plugin.json")"
+step "marketplace adicionado (a partir de $ROOT)" claude plugin marketplace add "$ROOT"
+step "plugin instalado" claude plugin install onedirection@onedirection
+
+claude plugin list --json > "$TMP/list.json" 2>"$TMP/err.txt" || { echo "FAIL claude plugin list --json"; cat "$TMP/err.txt"; exit 2; }
+fields="$(python3 - "$TMP/list.json" <<'PY'
+import json, sys
+p = [x for x in json.load(open(sys.argv[1])) if x.get("id") == "onedirection@onedirection"]
+print("\t".join(str(p[0].get(k, "")) for k in ("version", "enabled", "installPath")) if p else "\t\t")
+PY
+)"
+IFS=$'\t' read -r version enabled install_path <<< "$fields"
 [ "$version" = "$want" ] && ok "versão instalada = $want" || bad "versão instalada ($version, esperado $want)"
 [ "$enabled" = "True" ] && ok "plugin habilitado" || bad "plugin habilitado ($enabled)"
+if [ -z "$install_path" ] || [ ! -d "$install_path" ]; then
+  bad "installPath existe ($install_path)"; echo; echo "$fails falha(s)"; exit 1
+fi
+
+# A cópia instalada tem que ser outra pasta, dentro da configuração temporária, e não o checkout.
+real_install="$(cd "$install_path" && pwd -P)"; real_root="$(cd "$ROOT" && pwd -P)"; real_cfg="$(cd "$CLAUDE_CONFIG_DIR" && pwd -P)"
+case "$real_install" in
+  "$real_root"|"$real_root"/*) bad "a cópia instalada está fora do checkout (está em $real_install)" ;;
+  "$real_cfg"/*) ok "a cópia instalada está em CLAUDE_CONFIG_DIR, fora do checkout" ;;
+  *) bad "a cópia instalada está em CLAUDE_CONFIG_DIR (está em $real_install)" ;;
+esac
+# E igual aos arquivos daqui (manifestos, hooks, skills, scripts).
+diffs="$(python3 - "$ROOT" "$install_path" <<'PY'
+import filecmp, sys
+from pathlib import Path
+root, inst = Path(sys.argv[1]), Path(sys.argv[2])
+bad = []
+for sub in (".claude-plugin", "hooks", "skills", "scripts"):
+    for f in sorted((root / sub).rglob("*")):
+        if f.is_file() and "__pycache__" not in f.parts:
+            g = inst / f.relative_to(root)
+            if not g.is_file() or not filecmp.cmp(f, g, shallow=False):
+                bad.append(str(f.relative_to(root)))
+print("\n".join(bad))
+PY
+)"
+[ -z "$diffs" ] && ok "cópia instalada igual ao checkout (manifestos, hooks, skills, scripts)" || bad "cópia instalada difere do checkout: $(echo "$diffs" | head -5 | tr '\n' ' ')"
+[ -x "$install_path/hooks/session-start" ] && [ -x "$install_path/hooks/stop" ] && [ -x "$install_path/hooks/user-prompt-submit" ] \
+  && ok "hooks da cópia são executáveis" || bad "hooks da cópia são executáveis"
 
 details="$(claude plugin details onedirection@onedirection 2>&1 || true)"
-echo "$details" | grep -q "Skills (7)" && ok "7 skills carregadas" || bad "7 skills carregadas"
+n_skills="$(find "$ROOT/skills" -name SKILL.md | wc -l | tr -d ' ')"
+echo "$details" | grep -q "Skills ($n_skills)" && ok "$n_skills skills carregadas" || bad "$n_skills skills carregadas"
 echo "$details" | grep -q "Hooks (3)" && echo "$details" | grep -q "SessionStart, Stop, UserPromptSubmit" && ok "3 hooks carregados" || bad "3 hooks carregados"
-echo "$details" | grep -E "Always-on" | sed 's/^ */     custo fixo: /'
+echo "$details" | grep -E "Always-on" | sed 's/^ */     custo fixo: /' || :
 
-# Os hooks rodam a partir da cópia instalada (não do repositório).
+# Os hooks rodam a partir da cópia instalada, de dentro de uma pasta temporária (nada resolve pro checkout).
 PROJ="$TMP/projeto"; mkdir -p "$PROJ/.git"; cp "$ROOT/tests/evals/fixtures/estudai/NORTE.md" "$PROJ/NORTE.md"
-out="$(echo '{"source":"startup"}' | CLAUDE_PLUGIN_ROOT="$install_path" CLAUDE_PROJECT_DIR="$PROJ" "$install_path/hooks/session-start")"
-echo "$out" | python3 -c "import json,sys;c=json.load(sys.stdin)['hookSpecificOutput']['additionalContext'];assert 'Estudaí' in c and '<norte-md>' in c" 2>/dev/null \
-  && ok "SessionStart da cópia instalada injeta o NORTE.md" || bad "SessionStart da cópia instalada injeta o NORTE.md"
-out="$(echo '{}' | CLAUDE_PLUGIN_ROOT="$install_path" CLAUDE_PROJECT_DIR="$PROJ" "$install_path/hooks/user-prompt-submit")"
-echo "$out" | grep -q "Foco agora" && ok "UserPromptSubmit da cópia instalada traz o Foco agora" || bad "UserPromptSubmit da cópia instalada traz o Foco agora"
-out="$(echo '{"transcript_path":"/nao/existe"}' | "$install_path/hooks/stop")"
+cd "$PROJ"
+hook() { CLAUDE_PLUGIN_ROOT="$install_path" CLAUDE_PROJECT_DIR="$PROJ" "$install_path/hooks/$1"; }
+ctx() { python3 -c "import json,sys; print(json.load(sys.stdin).get('hookSpecificOutput',{}).get('additionalContext',''))"; }
+out="$(echo '{"source":"startup"}' | hook session-start | ctx 2>/dev/null || true)"
+case "$out" in *"<norte-md>"*"Estudaí ajuda"*"</norte-md>"*) ok "SessionStart da cópia instalada injeta o NORTE.md" ;; *) bad "SessionStart da cópia instalada injeta o NORTE.md" ;; esac
+out="$(echo '{}' | hook user-prompt-submit | ctx 2>/dev/null || true)"
+case "$out" in *"Foco agora"*) ok "UserPromptSubmit da cópia instalada traz o Foco agora" ;; *) bad "UserPromptSubmit da cópia instalada traz o Foco agora" ;; esac
+out="$(echo '{"transcript_path":"/nao/existe"}' | hook stop)"
 [ "$out" = "{}" ] && ok "Stop da cópia instalada responde" || bad "Stop da cópia instalada responde ($out)"
-exit $fail
+printf '%s\n' '{"type":"user","message":{"content":"muda"}}' \
+  '{"type":"assistant","message":{"content":[{"type":"tool_use","name":"Edit","input":{"file_path":"/p/a.js"}}]}}' \
+  '{"type":"assistant","message":{"content":[{"type":"text","text":"Pronto."}]}}' > "$TMP/t.jsonl"
+out="$(printf '{"transcript_path":"%s"}' "$TMP/t.jsonl" | hook stop)"
+case "$out" in *'"block"'*) ok "Stop da cópia instalada bloqueia 'pronto' sem conferência" ;; *) bad "Stop da cópia instalada bloqueia 'pronto' sem conferência ($out)" ;; esac
+
+echo
+if [ "$fails" = 0 ]; then echo "instalação ok"; exit 0; fi
+echo "$fails falha(s)"; exit 1
