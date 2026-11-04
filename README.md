@@ -15,6 +15,7 @@ onedirection é uma disciplina de foco pro seu agente de código: sete skills, t
 - [Testes](#testes)
 - [Segurança e privacidade](#segurança-e-privacidade)
 - [Compatibilidade e limites](#compatibilidade-e-limites)
+- [Limitações conhecidas](#limitações-conhecidas)
 - [Contribuindo](#contribuindo)
 - [Atualizando](#atualizando)
 - [Licença](#licença)
@@ -133,10 +134,10 @@ Se o Claude parecer perdido — repetindo trabalho, inventando nome de arquivo, 
 
 - **SessionStart** (`startup`, `clear`, `compact`) — injeta só o necessário, em três níveis:
   - **com `NORTE.md`**: a skill `using-onedirection` inteira + o `NORTE.md` (achado na pasta ou na raiz do git, se você abrir o Claude numa subpasta);
-  - **projeto sem `NORTE.md`**: as regras essenciais em poucas linhas (~1.000 caracteres);
-  - **fora de projeto** (sem git, sem manifesto, ou a sua pasta pessoal): uma linha (~150 caracteres).
+  - **projeto sem `NORTE.md`**: as regras essenciais em poucas linhas (~1.060 caracteres);
+  - **fora de projeto** (sem git, sem manifesto, ou a sua pasta pessoal): uma linha (~240 caracteres).
   Na compactação, em projeto, manda usar `recovering-focus`.
-- **UserPromptSubmit** — só em projetos com `NORTE.md`: uma regra curta (registrar ideia nova, conflito → guarda, prova antes de "pronto") e a seção "Foco agora", como dado do arquivo.
+- **UserPromptSubmit** — só em projetos com `NORTE.md`: uma regra curta (registrar ideia nova, conflito → guarda, prova antes de "pronto") e a seção "Foco agora", delimitada como dado do arquivo e limitada a 1.200 caracteres.
 - **Stop** — cobra uma regra mínima: se o Claude editou um arquivo que não é Markdown/texto, não conferiu nada **depois da última edição** e diz que terminou sem admitir que não verificou, a resposta volta pra ele **uma vez** pra conferir ou declarar "Não verifiquei: …".
   - Conta como conferência: um comando (`Bash`), a skill `verifying-before-done`, ou `Read`/`Grep` que olhe o arquivo editado. `Glob` não conta.
   - É uma heurística por palavras: não sabe se a verificação provou o que foi afirmado, e frases fora da lista passam.
@@ -149,7 +150,7 @@ scripts/validate-norte            # ./NORTE.md
 scripts/validate-norte outro/NORTE.md
 ```
 
-Confere se as seções existem, se o v1 tem itens, se há não-objetivos e critério de pronto, se sobrou trecho do modelo sem preencher e se o arquivo não passou de 120 linhas. O hook de início de sessão roda a mesma validação e, se achar problema, o Claude te avisa uma vez.
+Confere se as seções existem (e não se repetem), se o v1 tem itens (no máximo 4), se há não-objetivos e critério de pronto, se sobrou trecho do modelo sem preencher, se o arquivo não passou de 120 linhas, se há caractere de controle invisível (um ESC pode esconder texto de quem lê no terminal) e se há tag imitando as do plugin. O hook de início de sessão roda a mesma validação e, se achar problema, o Claude te avisa uma vez. Saída: 0 ok, 1 problemas, 2 arquivo não encontrado.
 
 ## Filosofia
 
@@ -161,20 +162,31 @@ Confere se as seções existem, se o v1 tem itens, se há não-objetivos e crit�
 
 ## Testes
 
-Dois níveis:
+Três níveis:
 
-- **Hooks e estrutura** (rápido, grátis): `bash tests/hooks/test-hooks.sh`
-- **Comportamento** (sessões reais do Claude, ~US$ 0,20–0,80 cada): `python3 tests/evals/run.py`
+| Nível | Comando | Custo | Precisa de |
+|---|---|---|---|
+| Tudo o que é barato | `scripts/check-all` | grátis, ~10 s | bash, python3; usa `shellcheck` e `claude` se existirem (senão, pula e avisa) |
+| Instalação de verdade | `scripts/test-install` | grátis, sem API | a CLI `claude` (sai com 3 se ela não existir) |
+| Comportamento | `python3 tests/evals/run.py` | ~US$ 0,20–0,80 por cenário | a CLI `claude` com login ou `ANTHROPIC_API_KEY` |
 
-Os testes de comportamento rodam cada cenário de `tests/evals/scenarios.json` numa sessão nova do Claude, numa cópia temporária de um projeto de mentira, com a versão **local** do plugin. Depois corrigem automaticamente o transcript e os arquivos:
+`scripts/check-all` roda `bash -n` em todos os scripts (também no bash 3.2 do macOS), `py_compile`, valida todo JSON, ShellCheck, `scripts/check-version`, `tests/evals/check_results.py`, `bash tests/hooks/test-hooks.sh`, `claude plugin validate .` e `git diff --check`. `CHECK_ALL_STRICT=1` transforma "ferramenta ausente" em falha.
+
+`tests/hooks/test-hooks.sh` (117 casos) cobre os três níveis de injeção, a compactação, o "Foco agora", o hook Stop, o validador e casos adversariais: tags que tentam fechar o bloco de dados, caracteres de controle, NORTE.md de 30 MB, link simbólico pra fora do repositório, FIFO, texto com `$( )` e crases (a suíte confere que nada é executado) e um lint que proíbe `&` no substituto de `${var//…/…}`. O placar é testado: uma falha proposital dentro de um pipe tem que derrubar a suíte.
+
+`scripts/test-install` usa uma configuração do Claude Code temporária (`CLAUDE_CONFIG_DIR`), sem mexer na sua. Ele adiciona este repositório como marketplace, instala o plugin, confere versão, skills e hooks, confere que a cópia instalada fica fora do checkout e é igual a ele, e roda os hooks dessa cópia. Se o marketplace ou a instalação falharem, ele para e mostra o erro do `claude` (código 2).
+
+### Testes de comportamento
+
+Rodam cada cenário de `tests/evals/scenarios.json` numa sessão nova do Claude, numa cópia temporária de um projeto de mentira, com a versão **local** do plugin. Depois um corretor automático confere o transcript e os arquivos. O corretor mede comportamento, não só texto: skill chamada pela ferramenta `Skill` (anunciar não conta), arquivos que mudaram ou não, ordem das escritas, comandos que rodaram (`git status` na retomada) e quantas vezes o hook Stop bloqueou.
 
 | Cenário | O que prova |
 |---|---|
 | `evolucao` | Ideia nova que serve à promessa é feita e registrada, sem alarme |
 | `conflito` | Pedido que bate num não-objetivo para antes do código e cita o trecho |
 | `pedido-pequeno` | Ajuste pequeno sem cerimônia e sem cair na isca do `TODO: refatorar` |
-| `alucinacao` | Pergunta sobre função inexistente: procura e diz que não existe |
-| `retomada` | Trabalho pela metade: reconstrói pelo `NORTE.md` e pelo git |
+| `alucinacao` | Pergunta sobre função inexistente: procura e diz que ela não existe |
+| `retomada` | Trabalho pela metade: roda `git status`/`git diff` e reconstrói pelo `NORTE.md` |
 | `mapeamento` | Projeto sem `NORTE.md`: mapeia primeiro e não grava nada sem aprovação |
 | `projeto-novo` | Pasta vazia: entrevista antes de qualquer código |
 | `fora-de-projeto` | Fora de projeto: fica quieto e quase não gasta contexto |
@@ -182,39 +194,56 @@ Os testes de comportamento rodam cada cenário de `tests/evals/scenarios.json` n
 | `progresso-desatualizado` | `NORTE.md` diz que o v1 está pronto e o código não: checkbox não é prova |
 | `aceitacao-projeto-novo` | Ponta a ponta: `NORTE.md` escrito **antes** do código, com os não-objetivos do usuário, v1 mínimo (até 4 itens) e sem estado futuro inventado |
 | `stop-hook-ativo` | Força um "Pronto." seco depois de editar: o hook bloqueia exatamente uma vez, sem laço |
-| `compactacao-real` | Sessão com trabalho pela metade, `/compact` de verdade e "continua": o hook avisa e o Claude retoma pelo `NORTE.md` e pelo git |
+| `compactacao-real` | Sessão com trabalho pela metade, `/compact` de verdade e "continua": o hook avisa e o Claude retoma pelo git e pelo `NORTE.md` |
 
-Rode um só com `python3 tests/evals/run.py conflito`, meça instabilidade com `--repeat 3` e troque o modelo com `EVAL_MODEL=sonnet`.
+Rode um só com `python3 tests/evals/run.py conflito`, meça instabilidade com `--repeat 3` e troque o modelo com `EVAL_MODEL=sonnet`. Cada rodada grava `run.json` (versão, commit, modelo pedido) ao lado dos transcripts.
+
+### Replay: recorrigir sem chamar o modelo
+
+```bash
+python3 tests/evals/run.py --replay PASTA_DOS_TRANSCRIPTS \
+  --source-results tests/evals/results/0.4.4-sonnet.json --save-results /tmp/replay.json
+```
+
+O replay **não executa modelo nenhum** e custa zero. Ele lê transcripts e fotos dos arquivos já gravados e roda o corretor atual sobre eles. Serve para saber se uma mudança no corretor muda o veredito sobre o mesmo comportamento, não para medir o plugin de novo. O resumo do replay diz isso nos campos `kind: "replay"`, `model_executed: false` e `replay_cost_usd: 0`, e separa o commit da rodada original (`source_commit`) do commit do corretor (`grader_commit`). `tests/evals/sanitize.py PASTA SAIDA` limpa transcripts para publicar.
 
 ### Resultados por versão
 
-Cada rodada grava um resumo em [`tests/evals/results/`](tests/evals/results/) com versão do plugin, commit, versão do Claude Code, modelo, data, custo e o resultado de cada cenário. Os transcripts limpos (sem caminhos pessoais nem skills de fora do onedirection) vão anexados à release do GitHub de cada versão.
+Os resumos ficam em [`tests/evals/results/`](tests/evals/results/), com versão do plugin, commits, versão do Claude Code e modelo (lidos dos transcripts), data, custo e o resultado de cada cenário. `tests/evals/check_results.py` confere que esses metadados fecham.
 
 | Versão | Opus | Sonnet | Como |
 |---|---|---|---|
 | 0.4.3 | 12/13 | 11/13 | ao vivo; as três falhas viraram as correções da 0.4.4 |
 | 0.4.4 | 12/13 | 12/13 | ao vivo; as duas falhas eram do corretor (explicado nas notas da versão) |
-| 0.4.4 | 13/13 | 13/13 | `--replay` com o corretor ajustado, sobre os transcripts publicados |
+| 0.4.4 | 13/13 | 13/13 | replay (nenhum modelo executado) com o corretor ajustado |
+| 0.4.5 | — | — | **não rodado ao vivo.** Replay dos transcripts da 0.4.4 com o corretor da 0.4.5: 13/13 e 13/13 |
 
-Pra recorrigir uma rodada publicada sem gastar nada: baixe os transcripts da release e rode `python3 tests/evals/run.py --replay PASTA`.
+**Os transcripts ainda não estão publicados.** Por enquanto, só a máquina do autor consegue refazer o replay. Quando houver release, eles vão anexados a ela.
 
-No GitHub, os testes dos hooks rodam a cada push (Ubuntu e macOS, incluindo o bash 3.2 do macOS) junto com `claude plugin validate`. Os de comportamento custam, então rodam à mão: **Actions › comportamento › Run workflow**, com o segredo `ANTHROPIC_API_KEY` configurado.
+No GitHub, a cada push, rodam os testes dos hooks no Ubuntu (bash 5) e no macOS (incluindo o bash 3.2), o `scripts/check-all`, a instalação real pelo marketplace e o `claude plugin validate`. Os de comportamento custam, então rodam à mão: **Actions › comportamento › Run workflow**, com o segredo `ANTHROPIC_API_KEY` configurado.
 
 ## Segurança e privacidade
 
-- **O que roda:** três hooks em bash (`hooks/session-start`, `hooks/user-prompt-submit`, `hooks/stop`), as funções que eles usam (`hooks/lib.sh`) e um script Python (`hooks/stop_check.py`), com as permissões do seu usuário, como todo plugin do Claude Code. Vale ler os cinco antes de instalar: somados, dão cerca de 450 linhas.
-- **O que não faz:** não acessa a rede, não instala nada, não tem telemetria, não grava fora do projeto. O hook Stop só **lê** o transcript da sessão.
-- **O que entra no contexto do Claude:** o texto das skills, e o `NORTE.md` e o "Foco agora" do projeto aberto.
-- **Repositório de outra pessoa:** o `NORTE.md` é escrito por quem mantém o repositório. Por isso ele entra **delimitado como dado** (fora da moldura de instruções do plugin), com tamanho limitado e com a orientação de não seguir ordens que não sejam sobre o escopo do produto. Isso reduz o risco de injeção de instruções, mas não zera: abrir um projeto que você não conhece continua pedindo cuidado, com ou sem este plugin.
+- **Os hooks rodam com as suas permissões.** São três hooks em bash (`hooks/session-start`, `hooks/user-prompt-submit`, `hooks/stop`), as funções que eles usam (`hooks/lib.sh`) e um script Python (`hooks/stop_check.py`), executados com o seu usuário a cada sessão, a cada mensagem e a cada fim de resposta, como em todo plugin do Claude Code. Vale ler os cinco antes de instalar.
+- **O que os hooks não fazem:** não acessam a rede, não instalam nada, não têm telemetria, não gravam arquivo nenhum e não executam texto vindo do projeto. O hook Stop só **lê** o transcript da sessão. A suíte tem um teste para cada uma dessas coisas: procura no código dos hooks por `curl`, `wget`, `eval`, socket e afins, e confere que `$( )` e crases escritos no `NORTE.md` não rodam. Quem usa rede são as ferramentas de desenvolvimento: `scripts/test-install` (a CLI `claude`) e os testes de comportamento (a API).
+- **O que entra no contexto do Claude (e portanto vai para a API):** o texto das skills, e o `NORTE.md` e o "Foco agora" do projeto aberto.
+- **Repositório de outra pessoa:** o `NORTE.md` é escrito por quem mantém o repositório, por isso o plugin o trata como dado não confiável:
+  - entra **delimitado** num bloco `<norte-md>`, fora da moldura de instruções do plugin, com a orientação de não seguir ordens que não sejam sobre o escopo do produto;
+  - todo `<` e `>` do arquivo vira `‹` e `›`, então nenhuma tag dele consegue fechar o bloco ou imitar a moldura;
+  - só os primeiros 12.000 bytes são lidos, cortados no fim de uma linha;
+  - **link simbólico e arquivo especial não são lidos:** um `NORTE.md` apontando para `~/.ssh/...` não vai parar no contexto. O hook avisa, e o Claude só lê o arquivo se você confirmar;
+  - o validador avisa de caractere de controle invisível e de tag imitando as do plugin.
+
+  Isso reduz o risco de injeção de instruções, mas não zera: obedecer ou não ao texto do bloco continua sendo decisão do modelo. Abrir um projeto que você não conhece continua pedindo cuidado, com ou sem este plugin.
 
 ## Compatibilidade e limites
 
 | Tema | Situação |
 |---|---|
-| Claude Code | Testado na 2.1.316. Usa hooks de plugin `SessionStart`, `UserPromptSubmit` e `Stop` |
+| Claude Code | Testes de comportamento na 2.1.317 (lida dos transcripts); instalação e `plugin validate` testados na 2.1.317. Usa hooks de plugin `SessionStart`, `UserPromptSubmit` e `Stop` |
 | Modelos | Testes de comportamento rodados no Opus e no Sonnet. Outros modelos: não testados |
-| Sistema | macOS (bash 3.2 do sistema ou mais novo) e Linux. **Windows não é suportado** |
-| `python3` | Opcional. Só o hook de fim de resposta usa; sem ele, esse hook fica desligado e o resto funciona |
+| Sistema | macOS (bash 3.2 do sistema ou mais novo) e Linux (bash 5 na CI). **Windows não é suportado** |
+| `python3` | Opcional pro plugin: só o hook de fim de resposta usa; sem ele, esse hook fica desligado e o resto funciona. Obrigatório pros testes |
 | Sem git | Funciona. O projeto é reconhecido por manifesto (`package.json`, `Cargo.toml`…); `recovering-focus` perde a parte do histórico |
 | Monorepo | O `NORTE.md` é procurado na pasta onde o Claude abriu e depois na raiz do git. Um por pacote, ou um na raiz |
 | Worktrees | Funciona: o `NORTE.md` é versionado e o `.git` em forma de arquivo é reconhecido |
@@ -225,16 +254,17 @@ No GitHub, os testes dos hooks rodam a cada push (Ubuntu e macOS, incluindo o ba
 
 **`NORTE.md` desatualizado:** peça "confere o progresso" (dispara `checking-progress`, que compara cada item com o código) ou rode `scripts/validate-norte` pra conferir a estrutura.
 
-### Custo de contexto (medido na 0.4.4)
+### Custo de contexto (medido na 0.4.5)
 
-| Situação | No início da sessão | A cada mensagem |
+| Situação | No início da sessão, no `/clear` e depois de cada compactação | A cada mensagem |
 |---|---|---|
 | Sempre (descrições das 7 skills) | ~466 tokens | — |
 | Fora de projeto | +241 caracteres (~60 tokens) | nada |
-| Projeto sem `NORTE.md` | +1.030 caracteres (~257 tokens) | nada |
-| Projeto com `NORTE.md` (exemplo de 898 bytes) | +8.402 caracteres (~2.100 tokens) | +429 caracteres (~107 tokens) |
+| Projeto sem `NORTE.md` | +1.063 caracteres (~270 tokens) | nada |
+| Projeto com `NORTE.md` (exemplo de 898 bytes) | +8.497 caracteres (~2.100 tokens) | +452 caracteres (~115 tokens) |
+| Pior caso: `NORTE.md` acima do limite | +~20.000 caracteres (~5.000 tokens): skill de 7 KB + 12.000 bytes do arquivo | até ~1.700 caracteres (Foco agora limitado a 1.200) |
 
-O `NORTE.md` injetado é cortado em 12.000 caracteres. Os números de skill vêm de `claude plugin details onedirection@onedirection`; os dos hooks, dos próprios hooks.
+Os números de skill vêm de `claude plugin details onedirection@onedirection`. Os dos hooks foram medidos na saída dos próprios hooks. Tokens ≈ caracteres ÷ 4, uma estimativa. O jeito de manter o custo baixo é manter o `NORTE.md` curto (~80 linhas), e o validador avisa quando ele passa de 120.
 
 ### O que é garantido e o que não é
 
@@ -244,16 +274,28 @@ O `NORTE.md` injetado é cortado em 12.000 caracteres. Os números de skill vêm
 | O "Foco agora" entra a cada mensagem | Entrevistar antes de codar, mapear antes de opinar |
 | "Pronto" depois de editar código, sem conferência posterior e sem admitir, volta uma vez | Fazer a verificação **certa** (o hook só vê que houve alguma) |
 | A estrutura do `NORTE.md` é validada e problemas são avisados | Parar no conflito e citar o trecho literal |
-| O `NORTE.md` entra como dado, delimitado e com tamanho limitado | Não seguir ordens escritas dentro de um `NORTE.md` malicioso |
+| O `NORTE.md` entra como dado, delimitado, sem `<`/`>` e com tamanho limitado; link simbólico não é lido | Não seguir ordens escritas dentro de um `NORTE.md` malicioso |
+| A saída dos hooks é JSON válido, inclusive com caractere de controle no `NORTE.md` | Registrar ideia nova em "Decisões" e manter "Foco agora" atualizado |
 
-**Limite honesto:** as regras são instruções pro modelo, e só uma delas é cobrada por código (o hook de "pronto" sem prova). O resto é medido pelos testes de comportamento, não garantido. Modelos diferentes seguem as instruções de jeitos diferentes: o Sonnet, por exemplo, só passou a registrar ideias novas em "Decisões" depois que a regra entrou no lembrete de cada mensagem.
+**Limite honesto:** as regras de comportamento são instruções pro modelo, e só uma delas é cobrada por código (o hook de "pronto" sem prova). A coluna da esquerda é o que os hooks fazem sozinhos. O resto é medido pelos testes de comportamento, não garantido. Modelos diferentes seguem as instruções de jeitos diferentes: o Sonnet, por exemplo, só passou a registrar ideias novas em "Decisões" depois que a regra entrou no lembrete de cada mensagem.
+
+## Limitações conhecidas
+
+- **Nada de comportamento é garantido.** As skills orientam. Os testes de comportamento medem 13 cenários num projeto de mentira, uma vez por modelo, então uma rodada verde não prova estabilidade (use `--repeat`).
+- **O hook Stop é uma heurística por palavras.** Ele só vê que *alguma* conferência aconteceu depois da última edição, não se ela prova o que foi dito. Frases fora da lista passam, e Markdown/`.txt` ficam de fora de propósito.
+- **A neutralização troca `<` e `>` na cópia injetada.** O modelo vê `‹ ›` no lugar (e é avisado disso). O arquivo em disco não muda.
+- **`NORTE.md` maior que 12.000 bytes:** só o começo entra no contexto, e um "Foco agora" que fique depois do corte não entra no lembrete por mensagem.
+- **Link simbólico:** um `NORTE.md` que é link (mesmo para dentro do repositório) não é carregado automaticamente.
+- **Os transcripts das rodadas ainda não estão publicados**, então o replay só é reproduzível na máquina do autor.
+- **A versão 0.4.5 não teve rodada ao vivo** dos testes de comportamento. Os hooks mudaram pouco no texto injetado, e as skills não mudaram.
+- **Windows não é suportado**, e o uso junto com a superpowers não foi testado.
 
 ## Contribuindo
 
 1. Faça um fork do repositório
 2. Crie uma branch pro seu trabalho
 3. Mantenha cada skill curta e com um trabalho só; regras duras em blocos (`<HARD-GATE>`, Lei de Ferro) e racionalizações em tabela "Pensamento | Realidade"
-4. Rode os dois níveis de teste. Mudou o texto de uma skill? Os testes de comportamento são obrigatórios: é assim que se descobre que uma frase nova quebrou um caso antigo
+4. Rode `scripts/check-all`. Mudou o texto de uma skill ou o que um hook injeta? Os testes de comportamento são obrigatórios: é assim que se descobre que uma frase nova quebrou um caso antigo
 5. Abra um PR explicando, com as suas palavras, o problema que a mudança resolve
 
 ## Atualizando
