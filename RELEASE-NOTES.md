@@ -1,5 +1,12 @@
 # Release notes
 
+## Não lançado
+
+Só ferramentas de teste e CI; o plugin (hooks e skills) não mudou desde a 0.4.5.
+
+- `scripts/check-all`: etapa pulada por falta de ferramenta não sai mais como "tudo passou", e sim como "VALIDAÇÃO INCOMPLETA", com a lista do que não rodou.
+- CI: a instalação real e o `claude plugin validate` da 0.4.5 rodaram na Claude Code **2.1.197**, não na versão atual, porque a CI usava Node 20 e o pacote atual pede Node ≥ 22. Agora a CI usa Node 22 (na primeira rodada, 2.1.318) e falha se o `claude` executado não for o que o npm instalou.
+
 ## 0.4.5 — 2026-11-03
 
 Auditoria de segurança e de honestidade dos testes. Ela achou duas promessas das versões anteriores que não valiam, e as duas estão corrigidas aqui.
