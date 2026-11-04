@@ -1,13 +1,13 @@
 # Release notes
 
-## 0.4.5 — 2026-11-03 (não publicada)
+## 0.4.5 — 2026-11-03
 
 Auditoria de segurança e de honestidade dos testes. Ela achou duas promessas das versões anteriores que não valiam, e as duas estão corrigidas aqui.
 
 **Correções de afirmações anteriores**
 - **"Tags que imitam a moldura ou fecham o bloco são neutralizadas" (0.4.3) não valia no Linux.** A troca usava `&` no substituto de `${var//…/…}`. No bash ≥ 5.2 (`patsub_replacement`), o `&` vira o trecho casado e o `</norte-md>` original sobrevivia. No bash 3.2 do macOS funcionava. A CI do Ubuntu imprimiu `FAIL NORTE.md não consegue fechar o próprio delimitador` e mesmo assim passou verde (próximo item).
 - **A suíte dos hooks não falhava quando um `check` falhava.** O `check` rodava dentro de um pipe, então o `fail=1` se perdia no subshell. Agora as falhas vão para um arquivo, e o próprio placar é testado com uma falha proposital.
-- **Os transcripts da 0.4.4 não foram publicados.** O README e as notas da 0.4.4 diziam que estavam na release v0.4.4, mas não existe release nem tag. O replay continua reproduzível só na máquina do autor até a release sair.
+- **Os transcripts da 0.4.4 não tinham sido publicados.** O README e as notas da 0.4.4 diziam que estavam na release v0.4.4, que nunca existiu. Agora eles estão anexados à release v0.4.5 (`transcripts-0.4.4-opus.tar.gz` e `transcripts-0.4.4-sonnet.tar.gz`).
 - **O resumo do replay do Sonnet dizia `model: opus`** e misturava o commit da rodada com o do corretor. Veja "Evidência" abaixo.
 
 **Segurança dos hooks**

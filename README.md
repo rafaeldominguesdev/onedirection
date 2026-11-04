@@ -218,7 +218,14 @@ Os resumos ficam em [`tests/evals/results/`](tests/evals/results/), com versão 
 | 0.4.4 | 13/13 | 13/13 | replay (nenhum modelo executado) com o corretor ajustado |
 | 0.4.5 | — | — | **não rodado ao vivo.** Replay dos transcripts da 0.4.4 com o corretor da 0.4.5: 13/13 e 13/13 |
 
-**Os transcripts ainda não estão publicados.** Por enquanto, só a máquina do autor consegue refazer o replay. Quando houver release, eles vão anexados a ela.
+**Transcripts:** os da rodada ao vivo da 0.4.4 (limpos com `sanitize.py`) estão anexados à [release v0.4.5](https://github.com/rafaeldominguesdev/onedirection/releases/tag/v0.4.5), um arquivo por modelo. Pra refazer o replay sem gastar nada:
+
+```bash
+mkdir -p /tmp/od-0.4.4 && tar -xzf transcripts-0.4.4-sonnet.tar.gz -C /tmp/od-0.4.4
+python3 tests/evals/run.py --replay /tmp/od-0.4.4/sonnet --source-results tests/evals/results/0.4.4-sonnet.json
+```
+
+Os da 0.4.3 não foram publicados.
 
 No GitHub, a cada push, rodam os testes dos hooks no Ubuntu (bash 5) e no macOS (incluindo o bash 3.2), o `scripts/check-all`, a instalação real pelo marketplace e o `claude plugin validate`. Os de comportamento custam, então rodam à mão: **Actions › comportamento › Run workflow**, com o segredo `ANTHROPIC_API_KEY` configurado.
 
@@ -286,7 +293,7 @@ Os números de skill vêm de `claude plugin details onedirection@onedirection`. 
 - **A neutralização troca `<` e `>` na cópia injetada.** O modelo vê `‹ ›` no lugar (e é avisado disso). O arquivo em disco não muda.
 - **`NORTE.md` maior que 12.000 bytes:** só o começo entra no contexto, e um "Foco agora" que fique depois do corte não entra no lembrete por mensagem.
 - **Link simbólico:** um `NORTE.md` que é link (mesmo para dentro do repositório) não é carregado automaticamente.
-- **Os transcripts das rodadas ainda não estão publicados**, então o replay só é reproduzível na máquina do autor.
+- **Só os transcripts da 0.4.4 estão publicados** (na release v0.4.5); os da 0.4.3 não, então o replay da 0.4.3 não é reproduzível por terceiros.
 - **A versão 0.4.5 não teve rodada ao vivo** dos testes de comportamento. Os hooks mudaram pouco no texto injetado, e as skills não mudaram.
 - **Windows não é suportado**, e o uso junto com a superpowers não foi testado.
 
