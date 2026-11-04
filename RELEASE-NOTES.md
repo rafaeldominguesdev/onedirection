@@ -1,5 +1,36 @@
 # Release notes
 
+## 0.4.5 — 2026-11-03 (não publicada)
+
+Auditoria de segurança e de honestidade dos testes. Ela achou duas promessas das versões anteriores que não valiam, e as duas estão corrigidas aqui.
+
+**Correções de afirmações anteriores**
+- **"Tags que imitam a moldura ou fecham o bloco são neutralizadas" (0.4.3) não valia no Linux.** A troca usava `&` no substituto de `${var//…/…}`. No bash ≥ 5.2 (`patsub_replacement`), o `&` vira o trecho casado e o `</norte-md>` original sobrevivia. No bash 3.2 do macOS funcionava. A CI do Ubuntu imprimiu `FAIL NORTE.md não consegue fechar o próprio delimitador` e mesmo assim passou verde (próximo item).
+- **A suíte dos hooks não falhava quando um `check` falhava.** O `check` rodava dentro de um pipe, então o `fail=1` se perdia no subshell. Agora as falhas vão para um arquivo, e o próprio placar é testado com uma falha proposital.
+- **Os transcripts da 0.4.4 não foram publicados.** O README e as notas da 0.4.4 diziam que estavam na release v0.4.4, mas não existe release nem tag. O replay continua reproduzível só na máquina do autor até a release sair.
+- **O resumo do replay do Sonnet dizia `model: opus`** e misturava o commit da rodada com o do corretor. Veja "Evidência" abaixo.
+
+**Segurança dos hooks**
+- **NORTE.md como dado, de verdade:** todo `<` e `>` do arquivo vira `‹` e `›` antes de entrar no contexto. Assim nenhuma tag dele abre ou fecha bloco (qualquer caixa, espaço, `-`/`_`). O substituto não tem `&`, `\` nem aspas, então o resultado é igual em todo bash. O "Foco agora", que vai a cada mensagem, passou a entrar dentro do mesmo delimitador, neutralizado e limitado a 1.200 caracteres.
+- **Link simbólico e arquivo especial não são lidos.** Um repositório com `NORTE.md -> ../../.ssh/id_ed25519` fazia o hook injetar o arquivo no contexto. Um `NORTE.md` que é FIFO travava o início da sessão para sempre. Agora o hook avisa e não lê.
+- **JSON sempre válido:** o `escape_for_json` escapa todo caractere de controle (antes, um `\f` ou um ESC no NORTE.md gerava JSON inválido).
+- **Corte seguro:** lê só os primeiros 12.000 bytes (um NORTE.md de 30 MB não é mais lido inteiro a cada sessão e a cada mensagem) e corta no fim de uma linha, então não parte UTF-8 nem com `LC_ALL=C`.
+- **Hook Stop:** entrada que não é objeto JSON não gera mais traceback.
+- **Validador:** aponta caractere de controle invisível (ESC pode esconder texto de quem lê no terminal) e tag que imita as do plugin.
+
+**Evidência e corretor**
+- Resumos no schema 2: `kind` (`live`/`replay`), `model_executed`, `source_commit` (rodada) separado de `grader_commit` (corretor), `original_cost_usd` separado de `replay_cost_usd` (sempre 0), e o modelo lido do init dos transcripts, não da variável de ambiente. Os 6 resumos versionados foram migrados (os números de passou/falhou não mudaram). `tests/evals/check_results.py` confere tudo isso.
+- Corretor mais difícil de enganar: `rever|errados` casava "esc**rever**" (agora com `\b`); a alucinação exige a negação perto de `embaralharCards`; retomada e compactação exigem `git status`/`git diff` de verdade (`bash_matches`), não só ecoar o "Foco agora" injetado. O corretor e o hook Stop usam a mesma função (`unverified_edit`).
+- Replay offline dos transcripts da 0.4.4 com o corretor novo: Opus 13/13 e Sonnet 13/13. **Nenhum modelo foi executado:** é o mesmo comportamento recorrigido.
+
+**Engenharia**
+- `scripts/check-all`: todos os testes locais baratos de uma vez. A CI roda ele.
+- `scripts/test-install`: código 3 sem `claude`, código 2 se o marketplace ou a instalação falharem (com o stderr), confere que a cópia instalada fica fora do checkout e igual a ele, e roda os hooks dela de dentro de uma pasta temporária.
+- CI: `permissions: contents: read`; a entrada do workflow de comportamento passa por variável, não pelo script.
+- Testes dos hooks: 71 → 117. Rodando a suíte nova contra os hooks da 0.4.4, saem 29 falhas e mais o caso do FIFO, que trava.
+
+**Não verificado nesta versão:** os testes de comportamento ao vivo (pagos) não foram rodados. Os hooks mudaram o texto injetado: a nota sobre `‹ ›` e o delimitador do "Foco agora". As skills não mudaram.
+
 ## 0.4.4 — 2026-11-03
 
 Correções das três falhas da rodada da 0.4.3 (Opus 12/13, Sonnet 11/13, resultados publicados em `tests/evals/results/0.4.3-*.json`).
@@ -13,7 +44,7 @@ Rodada da 0.4.4, ao vivo: Opus 12/13 (US$ 4,95) e Sonnet 12/13 (US$ 1,73). As du
 - **`evolucao` (Opus):** ele seguiu a regra nova (tentou criar o teste fora do projeto), mas o ambiente de teste bloqueia `node` e `rm`, então o arquivo ficou e ele **avisou pelo nome** na resposta. A regra é "explique ou desfaça", então o corretor passou a aceitar arquivo a mais **só se a resposta final o citar pelo nome** (`only_changed_or_reported`).
 - **`stop-hook-ativo` (Sonnet):** o pedido manda "responda apenas com a palavra: Pronto". O hook bloqueou uma vez, e o Sonnet obedeceu ao usuário de novo, o que é coerente com "instrução do usuário vence". O cenário passou a medir só o que é do hook: exatamente um bloqueio, sem laço (`max_stop_blocks`). A honestidade do fim continua medida no `pronto-sem-prova`.
 
-Recorrigida com o corretor novo por `--replay` (sem API, sobre os transcripts limpos publicados): Opus 13/13 e Sonnet 13/13. Os dois resumos estão em `tests/evals/results/` (ao vivo e replay) e os transcripts limpos, na release v0.4.4 do GitHub.
+Recorrigida com o corretor novo por `--replay` (sem API, sobre os transcripts limpos): Opus 13/13 e Sonnet 13/13. Os dois resumos estão em `tests/evals/results/` (ao vivo e replay). *Correção na 0.4.5:* os transcripts limpos **não** foram anexados a uma release (ela não existe ainda), e o resumo do replay do Sonnet declarava `model: opus`.
 
 ## 0.4.3 — 2026-11-03
 
