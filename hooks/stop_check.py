@@ -3,8 +3,10 @@
 
 Bloqueia o fim da resposta UMA vez (stop_hook_active evita laço) quando, no turno atual:
   1. houve edição de arquivo que não é Markdown (Edit/Write/MultiEdit/NotebookEdit);
-  2. nada foi conferido DEPOIS da última edição: um comando (Bash), a skill verifying-before-done,
-     ou Read/Grep que olhe o arquivo editado. Glob não conta: listar arquivos não prova nada;
+  2. nada foi conferido DEPOIS da última edição: um comando (Bash) que não seja só trivial, a skill
+     verifying-before-done, ou Read/Grep que olhe o arquivo editado. Glob não conta, nem um Bash feito
+     só de ls, pwd, echo, which, mkdir, git status, "--version" ou cat de outro arquivo: listar e
+     imprimir não provam nada. Comando com qualquer parte que não seja trivial conta;
   3. a resposta final afirma conclusão ("pronto", "feito", "corrigido", "done"...)
      sem admitir que não verificou ("não verifiquei", "não testei"...).
 
@@ -19,8 +21,16 @@ import re
 import sys
 
 EDIT_TOOLS = {"Edit", "Write", "MultiEdit", "NotebookEdit"}
-RUN_TOOLS = {"Bash"}            # comando: sempre conta como conferência
+RUN_TOOLS = {"Bash"}            # comando: conta, a menos que seja só comando trivial (ver bash_checks)
 LOOK_TOOLS = {"Read", "Grep"}   # leitura: só conta se olhar o arquivo editado
+# Comandos que, sozinhos, não conferem nada: navegar, listar, imprimir, mexer em arquivo temporário.
+TRIVIAL_CMDS = {"ls", "pwd", "echo", "printf", "cd", "date", "true", "false", "sleep", "whoami",
+                "which", "type", "mkdir", "mktemp", "touch", "rm", "rmdir", "cp", "mv", "clear", "tee"}
+TRIVIAL_GIT = {"status", "log", "branch", "rev-parse"}   # listam estado; git diff/show contam
+CAT_CMDS = {"cat", "head", "tail", "less", "more", "wc", "nl"}   # como o Read: só se olhar o arquivo editado
+VERSION_ARGS = {"--version", "-v", "-V", "version"}
+SEGMENT_SPLIT = re.compile(r"&&|\|\||[;|\n]")
+ASSIGNMENT = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*=")
 CLAIM = re.compile(
     r"\b(pront[oa]s?|feit[oa]s?|conclu[ií]d[oa]s?|finalizad[oa]s?|funcionando|corrigid[oa]s?|"
     r"resolvid[oa]s?|implementad[oa]s?|terminei|corrigi|resolvi|implementei|consertei|arrumei|"
@@ -60,6 +70,43 @@ def looks_at(name, inp, edited):
     return False
 
 
+def is_trivial_segment(words, edited_name):
+    while words and (ASSIGNMENT.match(words[0]) or words[0] in ("sudo", "env", "time", "nohup")):
+        words = words[1:]
+    if not words:
+        return True
+    if words[0] == "command":
+        if len(words) > 1 and words[1] in ("-v", "-V"):
+            return True
+        words = words[1:] or [""]
+    name, args = words[0].rsplit("/", 1)[-1], words[1:]
+    if name in TRIVIAL_CMDS:
+        return True
+    if args and all(a in VERSION_ARGS for a in args):   # node --version, python3 -V
+        return True
+    if name == "git":
+        i = 0
+        while i < len(args) and args[i].startswith("-"):
+            i += 2 if args[i] in ("-C", "-c") else 1
+        return i < len(args) and args[i] in TRIVIAL_GIT
+    if name in CAT_CMDS:
+        return not edited_name or not any(edited_name in a for a in args)
+    return False
+
+
+def bash_checks(command, edited):
+    """Um Bash conta como conferência, a menos que TODAS as partes sejam triviais (ls, pwd, echo,
+    which, mkdir, git status, node --version, cat de outro arquivo...). Na dúvida, conta:
+    o hook nunca pode bloquear uma conferência de verdade. Formato inesperado também conta."""
+    if not isinstance(command, str):
+        return True
+    edited_name = (edited or "").rsplit("/", 1)[-1]
+    for segment in SEGMENT_SPLIT.split(command):
+        if not is_trivial_segment(segment.split(), edited_name):
+            return True
+    return False
+
+
 def is_user_prompt(entry):
     if entry.get("type") != "user" or entry.get("isMeta"):
         return False
@@ -85,7 +132,7 @@ def unverified_edit(steps):
                 if not path.lower().endswith((".md", ".markdown", ".txt")):
                     last_edit, verified = path, False
             elif last_edit is not None and (
-                name in RUN_TOOLS
+                (name in RUN_TOOLS and bash_checks(inp.get("command"), last_edit))
                 or (name in LOOK_TOOLS and looks_at(name, inp, last_edit))
                 or (name == "Skill" and "verifying-before-done" in str(inp.get("skill", "")))
             ):

@@ -376,6 +376,18 @@ stop_case "só Glob depois da edição: bloqueia (listar não prova)" block "" "
 stop_case "Read de OUTRO arquivo depois da edição: bloqueia" block "" "$U" "$EDIT" "$RES" "$READOTHER" "$RES" "$DONE"
 stop_case "Grep no projeto inteiro depois da edição: passa" allow "" "$U" "$EDIT" "$RES" "$GREPALL" "$RES" "$DONE"
 stop_case "Grep em outra pasta depois da edição: bloqueia" block "" "$U" "$EDIT" "$RES" "$GREPOTHER" "$RES" "$DONE"
+sh_cmd() { python3 -c 'import json,sys; print(json.dumps({"type":"assistant","message":{"content":[{"type":"tool_use","name":"Bash","input":{"command":sys.argv[1]}}]}}))' "$1"; }
+for c in "ls -la" "pwd && echo ok" "which node; node --version" "git status --short" "git -C /p log --oneline -3" \
+         "cat /p/outro.txt" "mkdir -p /tmp/x && cd /tmp/x" "FOO=1 ls /p" "command -v python3" "echo feito | tee /tmp/log"; do
+  stop_case "Bash só trivial ($c) depois da edição: bloqueia" block "" "$U" "$EDIT" "$RES" "$(sh_cmd "$c")" "$RES" "$DONE"
+done
+for c in "git diff" "git -C /p diff --stat" "cat /p/index.html" "ls && npm test" "cd /p && node teste.js" \
+         "NODE_ENV=test npx jest" "python3 -c 'import sys'" "grep -n botao /p/index.html" \
+         $'cat > /tmp/t.js <<\'EOF\'\nconst x = 1;\nEOF' "echo \"a; b\""; do
+  stop_case "Bash que confere ($c) depois da edição: passa" allow "" "$U" "$EDIT" "$RES" "$(sh_cmd "$c")" "$RES" "$DONE"
+done
+stop_case "Bash com command que não é texto: passa (formato inesperado não bloqueia)" allow "" "$U" "$EDIT" "$RES" \
+  '{"type":"assistant","message":{"content":[{"type":"tool_use","name":"Bash","input":{"command":5}}]}}' "$RES" "$DONE"
 stop_case "duas edições, só a primeira conferida: bloqueia" block "" "$U" "$EDIT" "$RES" "$BASH" "$RES" "$EDIT2" "$RES" "$DONE"
 stop_case "'corrigi parcialmente': bloqueia" block "" "$U" "$EDIT" "$RES" "$(txt 'Corrigi parcialmente o bug do botão.')"
 stop_case "'deve funcionar agora': bloqueia" block "" "$U" "$EDIT" "$RES" "$(txt 'Mudei o cálculo, deve funcionar agora.')"
