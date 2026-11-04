@@ -265,13 +265,13 @@ No GitHub, a cada push, rodam os testes dos hooks no Ubuntu (bash 5) e no macOS 
 
 | Situação | No início da sessão, no `/clear` e depois de cada compactação | A cada mensagem |
 |---|---|---|
-| Sempre (descrições das 7 skills) | ~466 tokens | — |
+| Sempre (descrições das 7 skills) | ~466 a ~759 tokens (ver abaixo) | — |
 | Fora de projeto | +241 caracteres (~60 tokens) | nada |
 | Projeto sem `NORTE.md` | +1.063 caracteres (~270 tokens) | nada |
 | Projeto com `NORTE.md` (exemplo de 898 bytes) | +8.497 caracteres (~2.100 tokens) | +452 caracteres (~115 tokens) |
 | Pior caso: `NORTE.md` acima do limite | +~20.000 caracteres (~5.000 tokens): skill de 7 KB + 12.000 bytes do arquivo | até ~1.700 caracteres (Foco agora limitado a 1.200) |
 
-Os números de skill vêm de `claude plugin details onedirection@onedirection`. Os dos hooks foram medidos na saída dos próprios hooks. Tokens ≈ caracteres ÷ 4, uma estimativa. O jeito de manter o custo baixo é manter o `NORTE.md` curto (~80 linhas), e o validador avisa quando ele passa de 120.
+Os números de skill vêm de `claude plugin details onedirection@onedirection`, que deu valores diferentes conforme a configuração (Claude Code 2.1.317, mesmos arquivos): ~466 tokens numa configuração limpa, sem login, e ~759 numa configuração com login. Os ~466 batem exatamente com caracteres ÷ 4. A diferença é compatível com uma contagem de tokens de verdade, já que texto em português gasta mais tokens por caractere, mas não confirmei de onde vem a contagem maior. Os números dos hooks foram medidos na saída dos próprios hooks e convertidos com tokens ≈ caracteres ÷ 4, então provavelmente também estão subestimados numa proporção parecida (~1,6×). O jeito de manter o custo baixo é manter o `NORTE.md` curto (~80 linhas), e o validador avisa quando ele passa de 120.
 
 ### O que é garantido e o que não é
 
